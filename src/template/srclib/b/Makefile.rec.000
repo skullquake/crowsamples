@@ -1,0 +1,310 @@
+ifndef TOOLCHAINDIR
+	TOOLCHAINDIR=/usr/
+endif
+ifndef PREFIX
+	PREFIX=x86_64-linux-gnu
+endif
+ifndef POSTFIX
+	POSTFIX=
+endif
+ifdef $(word 1, PREFIX)
+	SEP0=-
+else
+	SEP0=
+endif
+ifdef $(word 1, POSTFIX)
+	SEP1=-
+else
+	SEP1=
+endif
+ifeq ($(OS),Windows_NT)
+   THEOS := Windows
+   SHELL = cmd
+    ifeq '$(findstring ;,$(PATH))' ';'
+       THEOS := Windows
+    else
+        THEOS := $(shell uname 2>/dev/null || $(ECHO) Unknown)
+        THEOS := $(patsubst CYGWIN%,Cygwin,$(THEOS))
+        THEOS := $(patsubst MSYS%,MSYS,$(THEOS))
+        THEOS := $(patsubst MINGW64%,MINGW,$(THEOS))
+        THEOS := $(patsubst MINGW%,MINGW64,$(THEOS))
+    endif
+    EXT := .exe
+else
+    UNAME_S := $(shell uname -s)
+    THEOS := $(UNAME_S)
+    ifeq ($(UNAME_S),Linux)
+    endif
+    ifeq ($(UNAME_S),Darwin)
+    endif
+    ifneq ($(filter arm%,$(UNAME_P)),)
+        THEOS=ARM
+    endif
+    EXT := .so
+endif
+ifeq ($(THEOS),$(filter $(THEOS),Windows_NT MINGW MINGW64 MSYS))
+        ifeq ($(PROCESSOR_ARCHITEW6432),AMD64)
+            PROC=AMD64
+        else
+        ifeq ($(PROCESSOR_ARCHITECTURE),AMD64)
+            PROC=AMD64
+        endif
+        ifeq ($(PROCESSOR_ARCHITECTURE),x86)
+            PROC=IA32
+        endif
+    endif
+else ifeq ($(THEOS),$(filter $(THEOS),Linux Darwin ARM))
+    UNAME_P := $(shell uname -p)
+    ifeq ($(UNAME_P),x86_64)
+        PROC=AMD64
+    endif
+    ifneq ($(filter %86,$(UNAME_P)),)
+        PROC=IA32
+    endif
+endif
+RM=/bin/rm
+CP=/bin/cp
+FIND=/bin/find
+MKDIR=/bin/mkdir
+ECHO=/bin/echo
+CAT=/bin/cat
+ECHO=/bin/echo
+MV=/bin/mv
+CXX=$(TOOLCHAINDIR)bin/$(PREFIX)$(SEP0)g++$(SEP1)$(POSTFIX)
+CC=$(TOOLCHAINDIR)bin/$(PREFIX)$(SEP0)gcc$(SEP1)$(POSTFIX)
+AR=$(TOOLCHAINDIR)bin/$(PREFIX)$(SEP0)ar$(SEP1)$(POSTFIX)
+LD=$(TOOLCHAINDIR)bin/$(PREFIX)$(SEP0)ld$(SEP1)$(POSTFIX)
+OBJDUMP=$(TOOLCHAINDIR)bin/$(PREFIX)$(SEP0)objdump$(SEP1)$(POSTFIX)
+NM=$(TOOLCHAINDIR)bin/$(PREFIX)$(SEP0)nm$(SEP1)$(POSTFIX)
+STRIP=$(TOOLCHAINDIR)bin/$(PREFIX)$(SEP0)strip
+CPPCHECK=/usr/bin/cppcheck
+#/usr/local/djgpp/i586-pc-msdosdjgpp/bin/dxe3gen
+#/usr/local/djgpp/bin//i586-pc-msdosdjgpp/bin/dxe3gen
+ifneq (,$(findstring djgpp,$(PREFIX)))
+	DXE3GEN=$(TOOLCHAINDIR)/i586-pc-msdosdjgpp/bin/dxe3gen
+	DXE3RES=$(TOOLCHAINDIR)/i586-pc-msdosdjgpp/bin/dxe3res
+endif
+GCCVERSION=$(shell $(CC) -dumpversion)
+ifdef $(word 1, GCCVERSION)
+	SEP2=-
+else
+	SEP2=
+endif
+#SRC+=./src/a.cpp
+#SRC+=./src/config/config.cpp
+SRCDIR=src
+BUILDROOT=build
+BUILDDIR=$(BUILDROOT)/$(PREFIX)$(SEP1)$(POSTFIX)
+LIBDIR=$(BUILDDIR)/lib/
+DEPLOYDIR=../../build/$(PREFIX)$(SEP1)$(POSTFIX)/lib/
+SRC:=$(shell find $(SRCDIR) -name '*.c' -o -name '*.cpp')
+OBJROOT=./obj/
+OBJDIR=$(OBJROOT)$(PREFIX)$(SEP1)$(POSTFIX)/
+OBJS=$(addprefix $(OBJDIR),$(patsubst %.c,%.o ,$(patsubst %.cpp,%.o,$(SRC))))
+MAKEFILEPATH:=$(abspath $(lastword $(MAKEFILE_LIST)))
+CURRENTDIRNAM:=$(notdir $(patsubst %/,%,$(dir $(MAKEFILEPATH))))
+LIBNAM=$(CURRENTDIRNAM)
+ifneq (,$(findstring mingw,$(PREFIX)))
+	DSOEXT=.dll
+else ifneq (,$(findstring djgpp,$(PREFIX)))
+	DSOEXT=.dxe
+else ifneq (,$(findstring linux,$(PREFIX)))
+	DSOEXT=.so
+else
+	DSOEXT=.so
+endif
+LIBEXT=.a
+ifneq (,$(findstring djgpp,$(PREFIX)))
+	DXEEXT=.dxe
+endif
+LIB=$(LIBDIR)/lib$(LIBNAM)$(LIBEXT)
+ifneq (,$(findstring djgpp,$(PREFIX)))
+	LIBIMP=$(LIBDIR)/libi$(LIBNAM)$(LIBEXT)
+endif
+ifneq (,$(findstring djgpp,$(PREFIX)))
+	SRCEXP=$(LIBDIR)/$(LIBPREFIX)$(LIBNAM).c
+endif
+DSO=$(LIBDIR)/lib$(LIBNAM)$(DSOEXT)
+ifneq (,$(findstring djgpp,$(PREFIX)))
+	DXE=$(LIBDIR)/$(LIBPREFIX)$(LIBNAM)$(DXEEXT)
+endif
+LIBPREFIX=lib
+ifneq (,$(findstring mingw,$(PREFIX)))
+	UPX=upx
+else ifneq (,$(findstring djgpp,$(PREFIX)))
+else ifneq (,$(findstring linux,$(PREFIX)))
+	UPX=$(ECHO) skipping upx
+else
+	UPX=$(ECHO) skipping upx
+endif
+CFLAGS=-Wall
+CFLAGS=-O2
+CFLAGS=-I./src
+#CFLAGS+=-s
+#CFLAGS+=-fvisibility=hidden
+#CFLAGS+=-fno-gnu-unique
+CXXFLAGS=-Wall
+CXXFLAGS=-O2
+CXXFLAGS=-I./src
+CXXFLAGS+=-s
+CXXFLAGS+=-fvisibility=hidden
+CXXFLAGS+=-fno-gnu-unique
+#lib determination sample
+#LDFLAGS+=$(LIBDIR)$(LIBPREFIX)a$(SEP0)$(PREFIX)$(SEP1)$(POSTFIX)$(DSOEXT)
+ifneq (,$(findstring mingw,$(PREFIX)))
+	CXXFLAGS+=-fPIC
+else ifneq (,$(findstring posix,$(PREFIX)))
+	CXXFLAGS+=-fPIC
+else ifneq (,$(findstring djgpp,$(PREFIX)))
+else ifneq (,$(findstring linux,$(PREFIX)))
+	CXXFLAGS+=-fPIC
+else
+	CXXFLAGS+=-fPIC
+endif
+CXXFLAGS+=-DLIBNAM=\"$(LIBNAM)\"
+CXXFLAGS+=-DDSOENTRY=$(LIBNAM)_entry
+CXXFLAGS+=-DLIBDIR=\"$(LIBDIR)\"
+CXXFLAGS+=-DLIBPREFIX=\"$(LIBPREFIX)\"
+CXXFLAGS+=-DPREFIX=\"$(PREFIX)\"
+CXXFLAGS+=-DPOSTFIX=\"$(POSTFIX)\"
+CXXFLAGS+=-DDSOEXT=\"$(DSOEXT)\"
+CXXFLAGS+=-DGCCVERSION=\"$(GCCVERSION)\"
+LDFLAGS+=-L$(DEPLOYDIR)
+ifneq (,$(findstring mingw,$(PREFIX)))
+	LDFLAGS+=-shared
+	LDFLAGS+=-static
+endif
+ifneq (,$(findstring mingw,$(PREFIX)))
+	ifneq (,$(findstring win32,$(POSTFIX)))
+		LDFLAGS+=-Wl,-Bdynamic
+	else
+		LDFLAGS+=-Wl,-Bdynamic
+	endif
+else ifneq (,$(findstring posix,$(PREFIX)))
+	CXXFLAGS+=-fPIC
+	LDFLAGS+=-shared
+	LDFLAGS+=-ldl
+else ifneq (,$(findstring djgpp,$(PREFIX)))
+else ifneq (,$(findstring linux,$(PREFIX)))
+	LDFLAGS+=-shared
+	LDFLAGS+=-ldl
+	LDFLAGS+=-rdynamic
+	LDFLAGS+=-Wl,-rpath=./lib
+else
+	LDFLAGS+=-rdynamic
+	LDFLAGS+=-Wl,-rpath=./lib
+endif
+#LIBS
+ifneq (,$(findstring djgpp,$(PREFIX)))
+	LDFLAGS+=-lia
+else
+	LDFLAGS+=-la
+endif
+ifneq (,$(findstring mingw,$(PREFIX)))
+	ifneq (,$(findstring win32,$(POSTFIX)))
+		LDFLAGS+=-Wl,-Bstatic
+	else
+		LDFLAGS+=-Wl,-Bstatic
+	endif
+endif
+ifeq (run,$(firstword $(MAKECMDGOALS)))
+  RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  $(eval $(RUN_ARGS):;@:)
+endif
+all:deploy
+ifneq (,$(findstring djgpp,$(PREFIX)))
+#all:$(DXE)
+all:$(LIB)
+$(DXE):export DJDIR=$(TOOLCHAINDIR)
+$(DXE):export PATH=$(TOOLCHAINDIR)/bin:/usr/local/djgpp/i586-pc-msdosdjgpp/bin
+$(DXE):export GCC_EXEC_PREFIX=$(TOOLCHAINDIR)/lib/gcc/
+$(DXE):export DJDIR=$(TOOLCHAINDIR)/i586-pc-msdosdjgpp
+$(DXE) $(LIBIMP):$(LIB)
+	@$(ECHO) "generating $(DXE):$(LIBDIR)..."
+	@$(MKDIR) -p $(LIBDIR)
+	$(DXE3GEN)\
+		-o $(DXE)\
+		-U\
+		--whole-archive\
+		$(LIB)
+	$(DXE3GEN) -I $(LIBIMP) $(DXE) 
+#	$(DXE3GEN) -Y $(LIBIMP) $(DXE) 
+	$(DXE3RES) -o $(SRCEXP) $(DXE)
+	$(ECHO) "#ifdef __DJGPP__" > ./_
+	$(CAT) $(SRCEXP) >> ./_
+	$(ECHO) "#endif" >> ./_
+	$(MV) _ $(SRCEXP)
+$(LIB):$(OBJS)
+	@$(ECHO) "generating $(LIB)..."
+	@$(MKDIR) -p $(LIBDIR)
+	$(AR) -rvs $(LIB) $(OBJS)
+deploy:$(DXE)
+	@$(MKDIR) -p $(DEPLOYDIR)
+	@$(ECHO) "deploying $(DXE):$(DEPLOYDIR)..."
+	@-$(CP) $(DXE) $(DEPLOYDIR)
+	@$(ECHO) "deploying $(LIB):$(DEPLOYDIR)..."
+	@-$(CP) $(LIB) $(DEPLOYDIR)
+	@$(ECHO) "deploying $(LIBIMP):$(DEPLOYDIR)..."
+	@-$(CP) $(LIBIMP) $(DEPLOYDIR)
+	@$(ECHO) "deploying $(SRCEXP)..."
+	@-$(MKDIR) -p ../../src/djgpp_imp
+	@-$(CP) $(SRCEXP) ../../src/djgpp_imp
+else
+$(DSO):$(OBJS)
+	@$(ECHO) "generating $@..."
+	@$(MKDIR) -p $(LIBDIR)
+	$(CXX) \
+		$(OBJS) \
+		$(LDFLAGS) \
+		-o $(DSO) 
+deploy:compress
+	@$(ECHO) "deploying $(DSO):$(DEPLOYDIR)..."
+	@$(MKDIR) -p $(DEPLOYDIR)
+	@$(CP) $(DSO) $(DEPLOYDIR)
+endif
+$(OBJDIR)%.o: %.c
+	@$(ECHO) "generating $@..."
+	@-$(MKDIR) -p $(@D)
+	$(CC)\
+		$(CFLAGS)\
+		-c $<\
+		-o $@
+$(OBJDIR)%.o: %.cpp
+	@$(ECHO) "generating $@..."
+	@-$(MKDIR) -p $(@D)
+	$(CXX) \
+		$(CXXFLAGS) \
+		-c $< \
+		-o $@
+strip:$(DSO)
+	@$(ECHO) "stripping $(DSO)..."
+	@$(STRIP) $(DSO) --strip-unneeded
+compress:strip
+	@$(ECHO) "compressing $(DSO)..."
+	@$(UPX) $(DSO)
+dumpsyms:$(OBJS)
+	@$(ECHO) "Dumping $(OBJS)..."
+	@$(OBJDUMP) -t $(OBJS)
+run:$(DSO)
+	@$(ECHO) "running $(DSO)..."
+	@$(DSO) $(RUN_ARGS) 
+.phony:clean
+clean:
+	@$(ECHO) "cleaning ..."
+	@$(ECHO) "removing $(BUILDDIR)..."
+	@-rm -rf $(BUILDDIR)
+	@$(ECHO) "removing $(OBJDIR)..."
+	@-rm -rf $(OBJDIR) 2>/dev/null
+cleanall:
+	@$(ECHO) "removing $(BUILDROOT)..."
+	@rm -rf $(BUILDROOT)/*
+	@$(ECHO) "removing $(OBJROOT)..."
+	@rm -rf $(OBJROOT)/*
+test:
+	@$(ECHO) $(BUILDROOT)
+	@$(ECHO) $(BUILDDIR)
+	@$(ECHO) $(LIBDIR)
+	@$(ECHO) $(DEPLOYDIR)
+sta:
+	@$(ECHO) "performing static analysis on $(SRC)..."
+	@$(CPPCHECK) --enable=all $(SRC)

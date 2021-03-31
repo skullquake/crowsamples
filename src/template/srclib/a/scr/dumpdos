@@ -1,0 +1,2 @@
+#!/bin/bash
+TOOLCHAINDIR=/usr/local/djgpp/ PREFIX=i586-pc-msdosdjgpp POSTFIX= make dumpsyms

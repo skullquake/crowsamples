@@ -1,0 +1,7 @@
+#!/bin/bash
+TOOLCHAINDIR=/usr/ PREFIX=i686-w64-mingw32 POSTFIX= make dumpsyms
+TOOLCHAINDIR=/usr/ PREFIX=i686-w64-mingw32 POSTFIX=posix make dumpsyms
+TOOLCHAINDIR=/usr/ PREFIX=i686-w64-mingw32 POSTFIX=win32 make dumpsyms
+TOOLCHAINDIR=/usr/ PREFIX=x86_64-w64-mingw32 POSTFIX= make dumpsyms
+TOOLCHAINDIR=/usr/ PREFIX=x86_64-w64-mingw32 POSTFIX=posix make dumpsyms
+TOOLCHAINDIR=/usr/ PREFIX=x86_64-w64-mingw32 POSTFIX=win32 make dumpsyms
