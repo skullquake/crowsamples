@@ -8,18 +8,22 @@
 		<table>
 			<tr>
 				<td>Output:</td>
+				<td><button onclick="toggle_output()">Toggle</button></td>
 				<td><span id="output">--</span></td>
 			</tr>
 			<tr>
 				<td>Clock:</td>
+				<td></td>
 				<td><span id="clock">--</span> cps</td>
 			</tr>
 			<tr>
 				<td>NReq:</td>
+				<td></td>
 				<td ><span id="nreq">--</span> req</td>
 			</tr>
 		</table>
 	<script>
+			var enable_output=true;
 			var acc=0;
 			var nreq=0;
 			var tprv=new Date();
@@ -30,11 +34,15 @@
 			var url=["ws://",location.hostname,":",location.port,"/ws"].join("");
 			var ws;
 			var setupws;
+			function toggle_output(){
+				enable_output=!enable_output;
+				if(!enable_output)el_output.innerText="--";
+			}
 			var onopen=function(event){
 				ws.send(`test`);
 			};
 			var onmessage=function(event){
-				el_output.innerText=event.data;
+				if(enable_output)el_output.innerText=event.data;
 				if(tcur-tprv>1000){
 					el_clock.innerText=Math.floor(1000*acc/(tcur-tprv));
 					el_nreq.innerText=nreq;
