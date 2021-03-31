@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8"/>
+		<title>Ws</title>
+	</head>
+	<body>
+		<table>
+			<tr>
+				<td>Output:</td>
+				<td><span id="output">--</span></td>
+			</tr>
+			<tr>
+				<td>Clock:</td>
+				<td><span id="clock">--</span> cps</td>
+			</tr>
+			<tr>
+				<td>NReq:</td>
+				<td ><span id="nreq">--</span> req</td>
+			</tr>
+		</table>
+	<script>
+			var acc=0;
+			var nreq=0;
+			var tprv=new Date();
+			var tcur=new Date();
+			var el_output=document.getElementById("output")
+			var el_clock=document.getElementById("clock")
+			var el_nreq=document.getElementById("nreq")
+			var url=["ws://",location.hostname,":",location.port,"/ws"].join("");
+			var ws;
+			var setupws;
+			var onopen=function(event){
+				ws.send(`test`);
+			};
+			var onmessage=function(event){
+				el_output.innerText=event.data;
+				if(tcur-tprv>1000){
+					el_clock.innerText=Math.floor(1000*acc/(tcur-tprv));
+					el_nreq.innerText=nreq;
+					tprv=new Date();
+					acc=0;
+				}acc++;nreq++;tcur=new Date();
+				ws.send(`test`);
+			};
+			var onerror=function(err){
+				console.error(err);
+			};
+			this.onclose=function(event){
+				setupws();
+			};
+			var setupws=function(){
+				ws=new WebSocket(url);
+				ws.onopen=onopen;
+				ws.onclose=onclose;
+				ws.onmessage=onmessage;
+				ws.onerror=onerror;
+			};
+			setupws();
+	</script>
+	</body>
+</html>

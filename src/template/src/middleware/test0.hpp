@@ -4,7 +4,7 @@
 #include"crow/http_response.h"
 namespace App{
 	namespace Middleware{
-		struct MWTest{
+		struct MWTest0{
 			struct context{};
 			void before_handle(crow::request&req,crow::response&res,context&ctx);
 			void after_handle(crow::request&req,crow::response&res,context&ctx);

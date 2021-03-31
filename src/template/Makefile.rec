@@ -131,8 +131,10 @@ else
 endif
 CXXFLAGS+=-DDSOEXT=\"$(DSOEXT)\"
 CXXFLAGS+=-DCOMPILERVERSION=\"$(COMPILERVERSION)\"
-CXXFLAGS+=-DCROW_DISABLE_LOGGING
-CXXFLAGS+=-DCROW_NTHREADS=8
+#CXXFLAGS+=-DCROW_DISABLE_LOGGING
+CXXFLAGS+=-DCROW_ENABLE_LOGGING
+CXXFLAGS+=-DCROW_STATIC_DIRECTORY=\"./public/\"
+CXXFLAGS+=-DCROW_STATIC_ENDPOINT=\"/public/\<path\>\"
 LDFLAGS+=-L$(LIBDIR)
 # --------------------------------------------------------------------------------
 ifneq (,$(findstring djgpp,$(TGT_MACHINE)))
@@ -258,3 +260,4 @@ test:
 	@echo POFX: $(COMPILERPOSTFIX)
 	@echo CXX:  $(CXX)
 	@echo RSC:  $(RUNSCRIPT)
+	@echo RSC:  $(CXXFLAGS)

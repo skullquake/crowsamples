@@ -2,11 +2,15 @@
 #include<iostream>
 #include<sstream>
 #include<vector>
+#include<chrono>
+#include<random>
 #include"crow/crow.h"
-#include"middleware/test.hpp"
+#include"crow/crow/mustache.h"
+#include"middleware/test0.hpp"
+#include"middleware/test1.hpp"
 #include"returnable/test.hpp"
 int main(int argc,char*argv[]){
-	crow::App<App::Middleware::MWTest>app;
+	crow::App<App::Middleware::MWTest0,App::Middleware::MWTest1>app;
 	CROW_ROUTE(app,"/")([](){
 		return "test";
 	});
@@ -15,6 +19,25 @@ int main(int argc,char*argv[]){
 		oss<<(a+b);
 		return oss.str();
 	});
+	CROW_ROUTE(app,"/loglevel/<string>")([&app](std::string level){
+		crow::json::wvalue j;
+		j["message"]="loglevel changed";
+		      if(level=="Debug"){
+		      app.loglevel(crow::LogLevel::Debug);
+		}else if(level=="Info"){
+		      app.loglevel(crow::LogLevel::Info);
+		}else if(level=="Warning"){
+		      app.loglevel(crow::LogLevel::Warning);
+		}else if(level=="Error"){
+		      app.loglevel(crow::LogLevel::Error);
+		}else if(level=="Critical"){
+		      app.loglevel(crow::LogLevel::Critical);
+		}else{
+			j["message"]="invalid loglevel";
+		}
+		return j;
+	});
+
 	CROW_ROUTE(app,"/response")([](crow::response&res){
 		res.add_header("Content-Type","text/plain");
 		res.write(R"(test)");
@@ -76,6 +99,45 @@ int main(int argc,char*argv[]){
 			return j;
 		}
 	});
+	CROW_ROUTE(app,"/file")([](crow::response&res){
+		res.set_static_file_info("public/index.html");
+		res.end();
+	});
+	CROW_ROUTE(app,"/mustache")([](){
+		crow::mustache::context ctx;
+		//crow::json::wvalue ctx;
+		ctx["title"]="test title";
+		ctx["heading"]="test heading";
+		ctx["message"]="test message";
+		return crow::mustache::load("./test.html").render(ctx);
+	});
+	CROW_ROUTE(app,"/multipart").methods(crow::HTTPMethod::POST)([](const crow::multipart::message&req){
+		//curl -v -F upload=@file0.txt -F upload=@file1.txt http://localhost:8080/multipart
+		crow::json::wvalue j;
+		std::vector<std::string>vcontents;
+		for(const auto&part:req.parts){
+			vcontents.push_back(part.body);
+		}
+		j["contents"]=vcontents;
+		return j;
+	});
+	std::random_device rd;
+	std::mt19937::result_type seed=rd();
+	std::mt19937 gen(seed);
+	CROW_ROUTE(app,"/ws")
+		.websocket()
+		.onopen([&](crow::websocket::connection&conn){
+			conn.send_text("onopen");
+		})
+		.onclose([&](crow::websocket::connection&conn,const std::string&reason){
+			conn.send_text("onclose");
+		})
+		.onmessage([&](crow::websocket::connection&conn,const std::string&data,bool is_binary){
+			std::ostringstream oss;
+			oss<<gen();
+			conn.send_text(oss.str());
+		})
+	;
 	app.loglevel(crow::LogLevel::Warning);
 	app.port(8080).concurrency(8).run();
 
