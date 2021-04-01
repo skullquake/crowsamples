@@ -16,20 +16,33 @@
 #include"test/class/test0.hpp"
 int main(int argc,char*argv[]){
 	crow::App<App::Middleware::MWTest0,App::Middleware::MWTest1>app;
+	//--------------------------------------------------------------------------------
+	//Example handler
+	//--------------------------------------------------------------------------------
 	CROW_ROUTE(app,"/")([](){
 		return "test";
 	});
+	//--------------------------------------------------------------------------------
+	//Example handler: <int>
+	//--------------------------------------------------------------------------------
 	CROW_ROUTE(app,"/add/<int>/<int>")([](int a,int b){
 		std::ostringstream oss;
 		oss<<(a+b);
 		return oss.str();
 	});
+	//--------------------------------------------------------------------------------
+	//Example handler: <path>
+	//--------------------------------------------------------------------------------
 	CROW_ROUTE(app,"/path/<path>")([](std::string path){
 		std::ostringstream oss;
 		oss<<path;
 		return oss.str();
 	});
+	//--------------------------------------------------------------------------------
+	//Obtain logging level
+	//--------------------------------------------------------------------------------
 	CROW_ROUTE(app,"/loglevel")([&app](){
+		//curl http://localhost:8080/loglevel
 		crow::json::wvalue j;
 		switch(crow::logger::get_current_log_level()){
 			case crow::LogLevel::Debug:
@@ -53,8 +66,15 @@ int main(int argc,char*argv[]){
 		}
 		return j;
 	});
-
+	//--------------------------------------------------------------------------------
+	//Set logging level
+	//--------------------------------------------------------------------------------
 	CROW_ROUTE(app,"/loglevel/<string>")([&app](std::string level){
+		//curl http://localhost:8080/loglevel/Debug
+		//curl http://localhost:8080/loglevel/Info
+		//curl http://localhost:8080/loglevel/Warning
+		//curl http://localhost:8080/loglevel/Error
+		//curl http://localhost:8080/loglevel/Critical
 		crow::json::wvalue j;
 		j["message"]="loglevel changed";
 		      if(level=="Debug"){
@@ -72,17 +92,26 @@ int main(int argc,char*argv[]){
 		}
 		return j;
 	});
+	//--------------------------------------------------------------------------------
+	//Handle response example
+	//--------------------------------------------------------------------------------
 	CROW_ROUTE(app,"/response")([](crow::response&res){
 		res.add_header("Content-Type","text/plain");
 		res.write(R"(test)");
 		res.end();
 	});
+	//--------------------------------------------------------------------------------
+	//Handle response example
+	//--------------------------------------------------------------------------------
 	CROW_ROUTE(app,"/response2")([](){
 		crow::response res;
 		res.add_header("Content-Type","text/plain");
 		res.write(R"(test)");
 		return res;
 	});
+	//--------------------------------------------------------------------------------
+	//Handle request example
+	//--------------------------------------------------------------------------------
 	CROW_ROUTE(app,"/request")([](const crow::request&req,crow::response&res){
 		res.add_header("Content-Type","text/plain");
 		std::string p0=req.url_params.get("p0")==nullptr?"null":req.url_params.get("p0");
@@ -91,10 +120,16 @@ int main(int argc,char*argv[]){
 		res.write(oss.str());
 		res.end();
 	});
+	//--------------------------------------------------------------------------------
+	//Return class instance example
+	//--------------------------------------------------------------------------------
 	CROW_ROUTE(app,"/returnable")([](){
 		App::Returnable::Test t;
 		return t;
 	});
+	//--------------------------------------------------------------------------------
+	//Write json example
+	//--------------------------------------------------------------------------------
 	CROW_ROUTE(app,"/json_write")([](){
 		crow::json::wvalue j;
 		j["k0"]=42;
@@ -114,6 +149,9 @@ int main(int argc,char*argv[]){
 		j["k4"]["baz"]="boop";
 		return j;
 	});
+	//--------------------------------------------------------------------------------
+	//Read json example
+	//--------------------------------------------------------------------------------
 	CROW_ROUTE(app,"/json_read").methods(crow::HTTPMethod::POST)([](const crow::request&req){
 		//curl -X POST -H "Content-Type: application/json" --data "{}" http://localhost:8080/json_read
 		//curl -X POST -H "Content-Type: application/json" --data "{junk}" http://localhost:8080/json_read
@@ -132,10 +170,16 @@ int main(int argc,char*argv[]){
 			return j;
 		}
 	});
+	//--------------------------------------------------------------------------------
+	//Serve static file example
+	//--------------------------------------------------------------------------------
 	CROW_ROUTE(app,"/file")([](crow::response&res){
 		res.set_static_file_info("public/index.html");
 		res.end();
 	});
+	//--------------------------------------------------------------------------------
+	//Mustache example
+	//--------------------------------------------------------------------------------
 	CROW_ROUTE(app,"/mustache")([](){
 		crow::mustache::context ctx;
 		//crow::json::wvalue ctx;
@@ -144,6 +188,9 @@ int main(int argc,char*argv[]){
 		ctx["message"]="test message";
 		return crow::mustache::load("./test.html").render(ctx);
 	});
+	//--------------------------------------------------------------------------------
+	//Multipart example
+	//--------------------------------------------------------------------------------
 	CROW_ROUTE(app,"/multipart").methods(crow::HTTPMethod::POST)([](const crow::multipart::message&req){
 		//curl -v -F upload=@file0.txt -F upload=@file1.txt http://localhost:8080/multipart
 		crow::json::wvalue j;
@@ -154,6 +201,9 @@ int main(int argc,char*argv[]){
 		j["contents"]=vcontents;
 		return j;
 	});
+	//--------------------------------------------------------------------------------
+	//WebSocket example
+	//--------------------------------------------------------------------------------
 	std::random_device rd;
 	std::mt19937::result_type seed=rd();
 	std::mt19937 gen(seed);
@@ -179,6 +229,9 @@ int main(int argc,char*argv[]){
 			CROW_LOG_DEBUG<<"main::ws::onclose:"<<std::this_thread::get_id()<<":end";
 		})
 	;
+	//--------------------------------------------------------------------------------
+	//WebSocket background thread example
+	//--------------------------------------------------------------------------------
 	class WsThreadUserData{
 		public:
 			WsThreadUserData(crow::websocket::connection*conn):conn(conn){
