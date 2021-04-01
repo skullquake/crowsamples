@@ -24,6 +24,31 @@ int main(int argc,char*argv[]){
 		oss<<path;
 		return oss.str();
 	});
+	CROW_ROUTE(app,"/loglevel")([&app](){
+		crow::json::wvalue j;
+		switch(crow::logger::get_current_log_level()){
+			case crow::LogLevel::Debug:
+				j["loglevel"]="Debug";
+				break;
+			case crow::LogLevel::Info:
+				j["loglevel"]="Info";
+				break;
+			case crow::LogLevel::Warning:
+				j["loglevel"]="Warning";
+				break;
+			case crow::LogLevel::Error:
+				j["loglevel"]="Error";
+				break;
+			case crow::LogLevel::Critical:
+				j["loglevel"]="Critical";
+				break;
+			default:
+				j["loglevel"]="Invalid";
+				break;
+		}
+		return j;
+	});
+
 	CROW_ROUTE(app,"/loglevel/<string>")([&app](std::string level){
 		crow::json::wvalue j;
 		j["message"]="loglevel changed";
