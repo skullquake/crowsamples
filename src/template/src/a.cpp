@@ -160,29 +160,29 @@ int main(int argc,char*argv[]){
 	CROW_ROUTE(app,"/ws")
 		.websocket()
 		.onopen([&](crow::websocket::connection&conn){
-			CROW_LOG_DEBUG<<"main::ws::onopen:start";
+			CROW_LOG_DEBUG<<"main::ws::onopen:"<<std::this_thread::get_id()<<":start";
 			conn.send_text("onopen");
 			conn.userdata(new App::Test::Class::Test0());
-			CROW_LOG_DEBUG<<"main::ws::onopen:end";
+			CROW_LOG_DEBUG<<"main::ws::onopen:"<<std::this_thread::get_id()<<":end";
 		})
 		.onmessage([&](crow::websocket::connection&conn,const std::string&data,bool is_binary){
-			CROW_LOG_DEBUG<<"main::ws::onmessage:start";
+			CROW_LOG_DEBUG<<"main::ws::onmessage:"<<std::this_thread::get_id()<<":start";
 			std::ostringstream oss;
 			oss<<gen();
 			conn.send_text(oss.str());
-			CROW_LOG_DEBUG<<"main::ws::onmessage:end";
+			CROW_LOG_DEBUG<<"main::ws::onmessage:"<<std::this_thread::get_id()<<":end";
 		})
 		.onclose([&](crow::websocket::connection&conn,const std::string&reason){
-			CROW_LOG_DEBUG<<"main::ws::onclose:start";
+			CROW_LOG_DEBUG<<"main::ws::onclose:"<<std::this_thread::get_id()<<":start";
 			conn.send_text("onclose");
 			delete static_cast<App::Test::Class::Test0*>(conn.userdata());
-			CROW_LOG_DEBUG<<"main::ws::onclose:end";
+			CROW_LOG_DEBUG<<"main::ws::onclose:"<<std::this_thread::get_id()<<":end";
 		})
 	;
 	class WsThreadUserData{
 		public:
 			WsThreadUserData(crow::websocket::connection*conn):conn(conn){
-				CROW_LOG_DEBUG<<"WsThreadUserData::WsThreadUserData:start";
+				CROW_LOG_DEBUG<<"WsThreadUserData::WsThreadUserData:"<<std::this_thread::get_id()<<":start";
 				t=new std::thread([this](){
 					CROW_LOG_DEBUG<<"WsThreadUserData::WsThreadUserData:"<<std::this_thread::get_id()<<":start";
 					std::random_device rd;
@@ -200,18 +200,18 @@ int main(int argc,char*argv[]){
 					}
 					CROW_LOG_DEBUG<<"WsThreadUserData::WsThreadUserData:"<<std::this_thread::get_id()<<":end";
 				});
-				CROW_LOG_DEBUG<<"WsThreadUserData::WsThreadUserData:end";
+				CROW_LOG_DEBUG<<"WsThreadUserData::WsThreadUserData:"<<std::this_thread::get_id()<<":end";
 			};
 			~WsThreadUserData(){
-				CROW_LOG_DEBUG<<"WsThreadUserData::~WsThreadUserData:start";
+				CROW_LOG_DEBUG<<"WsThreadUserData::~WsThreadUserData:"<<std::this_thread::get_id()<<":start";
 				end();
-				CROW_LOG_DEBUG<<"WsThreadUserData::~WsThreadUserData:end";
+				CROW_LOG_DEBUG<<"WsThreadUserData::~WsThreadUserData:"<<std::this_thread::get_id()<<":end";
 			};
 			void end(){
-				CROW_LOG_DEBUG<<"WsThreadUserData::end:start";
+				CROW_LOG_DEBUG<<"WsThreadUserData::end:"<<std::this_thread::get_id()<<":start";
 				std::lock_guard<std::mutex>l(mwrite);
 				aend=true;
-				CROW_LOG_DEBUG<<"WsThreadUserData::end:end";
+				CROW_LOG_DEBUG<<"WsThreadUserData::end:"<<std::this_thread::get_id()<<":end";
 			}
 		private:
 			crow::websocket::connection*conn;
@@ -223,19 +223,19 @@ int main(int argc,char*argv[]){
 	CROW_ROUTE(app,"/wsthread")
 		.websocket()
 		.onopen([&](crow::websocket::connection&conn){
-			CROW_LOG_DEBUG<<"main::wsthread::onopen:start";
+			CROW_LOG_DEBUG<<"main::wsthread::onopen:"<<std::this_thread::get_id()<<":start";
 			conn.send_text("onopen");
 			conn.userdata(new WsThreadUserData(&conn));
-			CROW_LOG_DEBUG<<"main::wsthread::onopen:end";
+			CROW_LOG_DEBUG<<"main::wsthread::onopen:"<<std::this_thread::get_id()<<":end";
 		})
 		.onmessage([&](crow::websocket::connection&conn,const std::string&data,bool is_binary){
-			CROW_LOG_DEBUG<<"main::wsthread::onmessage:start";
-			CROW_LOG_DEBUG<<"main::wsthread::onmessage:end";
+			CROW_LOG_DEBUG<<"main::wsthread::onmessage:"<<std::this_thread::get_id()<<":start";
+			CROW_LOG_DEBUG<<"main::wsthread::onmessage:"<<std::this_thread::get_id()<<":end";
 		})
 		.onclose([&](crow::websocket::connection&conn,const std::string&reason){
-			CROW_LOG_DEBUG<<"main::wsthread::onclose:start";
+			CROW_LOG_DEBUG<<"main::wsthread::onclose:"<<std::this_thread::get_id()<<":start";
 			delete static_cast<WsThreadUserData*>(conn.userdata());
-			CROW_LOG_DEBUG<<"main::wsthread::onclose:end";
+			CROW_LOG_DEBUG<<"main::wsthread::onclose:"<<std::this_thread::get_id()<<":end";
 		})
 	;
 	app.loglevel(crow::LogLevel::Warning);
