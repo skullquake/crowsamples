@@ -1,0 +1,4 @@
+#!/bin/bash
+TOOLCHAINDIR=/usr/ PREFIX=x86_64-linux-gnu POSTFIX= make
+TOOLCHAINDIR=/usr/ PREFIX=x86_64-linux-gnu POSTFIX=7 make
+

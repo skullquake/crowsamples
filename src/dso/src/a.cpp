@@ -12,11 +12,12 @@
 #include"crow/crow/mustache.h"
 #include"middleware/test0.hpp"
 #include"middleware/test1.hpp"
+#include"middleware/dso.hpp"
 #include"returnable/test.hpp"
 #include"test/class/test0.hpp"
 #include"dso/dso.hpp"
 int main(int argc,char*argv[]){
-	crow::App<App::Middleware::MWTest0,App::Middleware::MWTest1>app;
+	crow::App<App::Middleware::MWTest0,App::Middleware::MWTest1,App::Middleware::MWDso>app;
 	//--------------------------------------------------------------------------------
 	//Example handler
 	//--------------------------------------------------------------------------------
