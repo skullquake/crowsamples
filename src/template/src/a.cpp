@@ -9,6 +9,7 @@
 #include"middleware/test0.hpp"
 #include"middleware/test1.hpp"
 #include"returnable/test.hpp"
+#include"test/class/test0.hpp"
 int main(int argc,char*argv[]){
 	crow::App<App::Middleware::MWTest0,App::Middleware::MWTest1>app;
 	CROW_ROUTE(app,"/")([](){
@@ -156,14 +157,16 @@ int main(int argc,char*argv[]){
 		.websocket()
 		.onopen([&](crow::websocket::connection&conn){
 			conn.send_text("onopen");
-		})
-		.onclose([&](crow::websocket::connection&conn,const std::string&reason){
-			conn.send_text("onclose");
+			conn.userdata(new App::Test::Class::Test0());
 		})
 		.onmessage([&](crow::websocket::connection&conn,const std::string&data,bool is_binary){
 			std::ostringstream oss;
 			oss<<gen();
 			conn.send_text(oss.str());
+		})
+		.onclose([&](crow::websocket::connection&conn,const std::string&reason){
+			conn.send_text("onclose");
+			delete static_cast<App::Test::Class::Test0*>(conn.userdata());
 		})
 	;
 	app.loglevel(crow::LogLevel::Warning);
