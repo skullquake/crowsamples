@@ -19,6 +19,11 @@ int main(int argc,char*argv[]){
 		oss<<(a+b);
 		return oss.str();
 	});
+	CROW_ROUTE(app,"/path/<path>")([](std::string path){
+		std::ostringstream oss;
+		oss<<path;
+		return oss.str();
+	});
 	CROW_ROUTE(app,"/loglevel/<string>")([&app](std::string level){
 		crow::json::wvalue j;
 		j["message"]="loglevel changed";
@@ -37,7 +42,6 @@ int main(int argc,char*argv[]){
 		}
 		return j;
 	});
-
 	CROW_ROUTE(app,"/response")([](crow::response&res){
 		res.add_header("Content-Type","text/plain");
 		res.write(R"(test)");
@@ -49,7 +53,6 @@ int main(int argc,char*argv[]){
 		res.write(R"(test)");
 		return res;
 	});
-
 	CROW_ROUTE(app,"/request")([](const crow::request&req,crow::response&res){
 		res.add_header("Content-Type","text/plain");
 		std::string p0=req.url_params.get("p0")==nullptr?"null":req.url_params.get("p0");
@@ -60,7 +63,7 @@ int main(int argc,char*argv[]){
 	});
 	CROW_ROUTE(app,"/returnable")([](){
 		App::Returnable::Test t;
-	return t;
+		return t;
 	});
 	CROW_ROUTE(app,"/json_write")([](){
 		crow::json::wvalue j;
@@ -140,6 +143,4 @@ int main(int argc,char*argv[]){
 	;
 	app.loglevel(crow::LogLevel::Warning);
 	app.port(8080).concurrency(8).run();
-
-
 }
