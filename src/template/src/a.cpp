@@ -4,6 +4,8 @@
 #include<vector>
 #include<chrono>
 #include<random>
+#include<thread>
+#include<chrono>
 #include"crow/crow.h"
 #include"crow/crow/mustache.h"
 #include"middleware/test0.hpp"
@@ -156,17 +158,52 @@ int main(int argc,char*argv[]){
 	CROW_ROUTE(app,"/ws")
 		.websocket()
 		.onopen([&](crow::websocket::connection&conn){
+			CROW_LOG_DEBUG<<"main::ws::onopen:start";
 			conn.send_text("onopen");
 			conn.userdata(new App::Test::Class::Test0());
+			CROW_LOG_DEBUG<<"main::ws::onopen:end";
 		})
 		.onmessage([&](crow::websocket::connection&conn,const std::string&data,bool is_binary){
+			CROW_LOG_DEBUG<<"main::ws::onmessage:start";
 			std::ostringstream oss;
 			oss<<gen();
 			conn.send_text(oss.str());
+			CROW_LOG_DEBUG<<"main::ws::onmessage:end";
 		})
 		.onclose([&](crow::websocket::connection&conn,const std::string&reason){
+			CROW_LOG_DEBUG<<"main::ws::onclose:start";
 			conn.send_text("onclose");
 			delete static_cast<App::Test::Class::Test0*>(conn.userdata());
+			CROW_LOG_DEBUG<<"main::ws::onclose:end";
+		})
+	;
+	CROW_ROUTE(app,"/wsthread")
+		.websocket()
+		.onopen([&](crow::websocket::connection&conn){
+			CROW_LOG_DEBUG<<"main::wsthread::onopen:start";
+			conn.send_text("onopen");
+			conn.userdata(new std::thread([&gen,&conn](){
+				CROW_LOG_DEBUG<<"main::wsthread::"<<std::this_thread::get_id()<<":start";
+				while(true){
+					CROW_LOG_DEBUG<<"main::wsthread::"<<std::this_thread::get_id()<<":send";
+					std::ostringstream oss;
+					oss<<gen();
+					conn.send_text(oss.str());
+					std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				}
+				CROW_LOG_DEBUG<<"main::wsthread::"<<std::this_thread::get_id()<<":end";
+			}));
+			static_cast<std::thread*>(conn.userdata())->detach();
+			CROW_LOG_DEBUG<<"main::wsthread::onopen:end";
+		})
+		.onmessage([&](crow::websocket::connection&conn,const std::string&data,bool is_binary){
+			CROW_LOG_DEBUG<<"main::wsthread::onmessage:start";
+			CROW_LOG_DEBUG<<"main::wsthread::onmessage:end";
+		})
+		.onclose([&](crow::websocket::connection&conn,const std::string&reason){
+			CROW_LOG_DEBUG<<"main::wsthread::onclose:start";
+			delete static_cast<std::thread*>(conn.userdata());
+			CROW_LOG_DEBUG<<"main::wsthread::onclose:end";
 		})
 	;
 	app.loglevel(crow::LogLevel::Warning);
