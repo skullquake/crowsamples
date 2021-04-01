@@ -6,6 +6,8 @@
 #include<random>
 #include<thread>
 #include<chrono>
+#include<atomic>
+#include<mutex>
 #include"crow/crow.h"
 #include"crow/crow/mustache.h"
 #include"middleware/test0.hpp"
@@ -177,23 +179,53 @@ int main(int argc,char*argv[]){
 			CROW_LOG_DEBUG<<"main::ws::onclose:end";
 		})
 	;
+	class WsThreadUserData{
+		public:
+			WsThreadUserData(crow::websocket::connection*conn):conn(conn){
+				CROW_LOG_DEBUG<<"WsThreadUserData::WsThreadUserData:start";
+				t=new std::thread([this](){
+					CROW_LOG_DEBUG<<"WsThreadUserData::WsThreadUserData:"<<std::this_thread::get_id()<<":start";
+					std::random_device rd;
+					std::mt19937::result_type seed=rd();
+					std::mt19937 gen(seed);
+					while(!aend.load()){
+						CROW_LOG_DEBUG<<"WsThreadUserData::WsThreadUserData:"<<std::this_thread::get_id()<<":write";
+						{
+							std::lock_guard<std::mutex>l(mwrite);
+							std::ostringstream oss;
+							oss<<gen();
+							this->conn->send_text(oss.str());
+						}
+						std::this_thread::sleep_for(std::chrono::milliseconds(100));
+					}
+					CROW_LOG_DEBUG<<"WsThreadUserData::WsThreadUserData:"<<std::this_thread::get_id()<<":end";
+				});
+				CROW_LOG_DEBUG<<"WsThreadUserData::WsThreadUserData:end";
+			};
+			~WsThreadUserData(){
+				CROW_LOG_DEBUG<<"WsThreadUserData::~WsThreadUserData:start";
+				end();
+				CROW_LOG_DEBUG<<"WsThreadUserData::~WsThreadUserData:end";
+			};
+			void end(){
+				CROW_LOG_DEBUG<<"WsThreadUserData::end:start";
+				std::lock_guard<std::mutex>l(mwrite);
+				aend=true;
+				CROW_LOG_DEBUG<<"WsThreadUserData::end:end";
+			}
+		private:
+			crow::websocket::connection*conn;
+			std::thread*t;
+			std::atomic<bool>aend{false};
+			std::mutex mwrite;
+			
+	};
 	CROW_ROUTE(app,"/wsthread")
 		.websocket()
 		.onopen([&](crow::websocket::connection&conn){
 			CROW_LOG_DEBUG<<"main::wsthread::onopen:start";
 			conn.send_text("onopen");
-			conn.userdata(new std::thread([&gen,&conn](){
-				CROW_LOG_DEBUG<<"main::wsthread::"<<std::this_thread::get_id()<<":start";
-				while(true){
-					CROW_LOG_DEBUG<<"main::wsthread::"<<std::this_thread::get_id()<<":send";
-					std::ostringstream oss;
-					oss<<gen();
-					conn.send_text(oss.str());
-					std::this_thread::sleep_for(std::chrono::milliseconds(100));
-				}
-				CROW_LOG_DEBUG<<"main::wsthread::"<<std::this_thread::get_id()<<":end";
-			}));
-			static_cast<std::thread*>(conn.userdata())->detach();
+			conn.userdata(new WsThreadUserData(&conn));
 			CROW_LOG_DEBUG<<"main::wsthread::onopen:end";
 		})
 		.onmessage([&](crow::websocket::connection&conn,const std::string&data,bool is_binary){
@@ -202,7 +234,7 @@ int main(int argc,char*argv[]){
 		})
 		.onclose([&](crow::websocket::connection&conn,const std::string&reason){
 			CROW_LOG_DEBUG<<"main::wsthread::onclose:start";
-			delete static_cast<std::thread*>(conn.userdata());
+			delete static_cast<WsThreadUserData*>(conn.userdata());
 			CROW_LOG_DEBUG<<"main::wsthread::onclose:end";
 		})
 	;
