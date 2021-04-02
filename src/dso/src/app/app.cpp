@@ -1,4 +1,4 @@
-/*
+#include"./app.hpp"
 #include<iostream>
 #include<sstream>
 #include<vector>
@@ -12,10 +12,7 @@
 #include"app/config/config.hpp"
 #include"app/middleware/dso.hpp"
 #include"dso/dso.hpp"
-*/
-#include"app/app.hpp"
-int main(int argc,char*argv[]){
-/*
+crow::App<App::Middleware::MWDso>App::mkapp(){
 	crow::App<App::Middleware::MWDso>app;
 	//--------------------------------------------------------------------------------
 	//Obtain logging level
@@ -72,6 +69,5 @@ int main(int argc,char*argv[]){
 		return j;
 	});
 	app.loglevel(App::Config::config.get_loglevel());
-	app.port(App::Config::config.get_port()).concurrency(App::Config::config.get_concurrency()).run();
-*/
+	
 }

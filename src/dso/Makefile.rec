@@ -127,10 +127,11 @@ else ifneq (,$(findstring linux,$(TGT_MACHINE)))
 else
 	UPX=echo skipping upx
 endif
-CXXFLAGS=-Wall
-CXXFLAGS=-O2
-CXXFLAGS=-I./src
-CXXFLAGS=-I./src/crow
+CXXFLAGS+=-Wall
+CXXFLAGS+=-O2
+CXXFLAGS+=-I./
+CXXFLAGS+=-I./src
+CXXFLAGS+=-I./src/crow
 ifneq (,$(findstring djgpp,$(TGT_MACHINE)))
 	CXXFLAGS+=-DENTRYPOINT=\"_appmain\"
 else
@@ -211,7 +212,7 @@ $(OBJDIR)%.o: %.c
 $(OBJDIR)%.o: %.cpp
 	@echo "generating $@..."
 	@-$(MKDIR) -p $(@D)
-	@$(CXX)\
+	$(CXX)\
 		$(CXXFLAGS)\
 		-c $<\
 		-o $@
