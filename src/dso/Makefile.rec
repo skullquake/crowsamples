@@ -136,8 +136,8 @@ LIBFLAGS=$(addprefix -l,$(LIBNAMS))
 ifneq (,$(findstring mingw,$(TGT_MACHINE)))
 else
 	LDFLAGS+=-rdynamic
-	LDFLAGS+=-Wl,-rpath=./lib
-	LDFLAGS+=-Wl,-rpath=$(LIBDIR)
+#	LDFLAGS+=-Wl,-rpath=./lib
+#	LDFLAGS+=-Wl,-rpath=$(LIBDIR)
 endif
 # --------------------------------------------------------------------------------
 ifneq (,$(findstring mingw,$(TGT_MACHINE)))
