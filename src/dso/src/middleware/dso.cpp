@@ -10,6 +10,7 @@ namespace fs=std::filesystem;
 #include<experimental/filesystem>
 namespace fs=std::experimental::filesystem;
 #endif
+#include<boost/filesystem.hpp>
 static bool fileExists(std::string path){
 	CROW_LOG_DEBUG<<"Checking "+path;
 	struct stat sb;
@@ -28,7 +29,10 @@ enum class Os{
         OTHER
 };
 static bool canLoadDSO(std::string path){
+	/*
 	std::string extension=fs::path(path).extension();
+	*/
+	std::string extension=boost::filesystem::path(path).extension().string();
 	std::string dsoextension=
 #ifdef _WIN32
 		".dll"
@@ -67,24 +71,32 @@ Os getOs(){
 }
 void App::Middleware::MWDso::before_handle(crow::request&req,crow::response&res,context&ctx){
 	CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:start";
-	std::string path=std::string(CROW_STATIC_DIRECTORY)+req.url;
+	std::string path=boost::filesystem::path(std::string(CROW_STATIC_DIRECTORY)+req.url).lexically_normal().string();
 	if(canLoadDSO(path)&&fileExists(path)){
-		CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:opening "<<path;
+		CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:"<<path<<":opening...";
 		void*mod=dlopen(path.c_str(),RTLD_LAZY);
 		if(mod!=nullptr){
-			CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:opened "<<path;
+			CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:"<<path<<":opened";
+			auto sym=(int(*)(void*,void*))dlsym(mod,"entry");
+			if(sym!=nullptr){
+				CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:"<<path<<":symbol obtained";
+				sym(static_cast<void*>(&req),static_cast<void*>(&res));
+			}else{
+				std::string err{dlerror()};
+				CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:"<<path<<":failed to obtain symbol:"<<err;
+				res.add_header("Content-Type","application/json");
+				crow::json::wvalue j;
+				j["error"]=err;
+				res.write(j.dump());
+			}
 			dlclose(mod);
-			CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:closed "<<path;
-			res.add_header("Content-Type","application/json");
-			crow::json::wvalue j;
-			j["message"]="dso loaded";
-			res.write(j.dump());
+			CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:"<<path<<":closed";
 		}else{
-			std::string error{dlerror()};
-			CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:failed to open "<<path<<":"<<error;
+			std::string err{dlerror()};
+			CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:"<<path<<"failed to open:"<<err;
 			res.add_header("Content-Type","application/json");
 			crow::json::wvalue j;
-			j["error"]=error;
+			j["error"]=err;
 			res.write(j.dump());
 		}
 		res.end();

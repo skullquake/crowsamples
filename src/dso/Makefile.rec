@@ -44,11 +44,14 @@ ifeq ($(HOST_OS),$(filter $(HOST_OS),Windows_NT MINGW MINGW64 MSYS))
         endif
     endif
 else ifeq ($(HOST_OS),$(filter $(HOST_OS),Linux Darwin ARM))
-    UNAME_P := $(shell uname -p)
-    ifeq ($(UNAME_P),x86_64)
+    UNAME_M := $(shell uname -m)
+    ifeq ($(UNAME_M),x86_64)
         HOST_PROC=AMD64
     endif
-    ifneq ($(filter %86,$(UNAME_P)),)
+    ifeq ($(UNAME_M),aarch64)
+        HOST_PROC=ARM
+    endif
+    ifneq ($(filter %86,$(UNAME_M)),)
         HOST_PROC=IA32
     endif
 endif
@@ -66,6 +69,10 @@ CP=/bin/cp
 RM=/bin/rm
 FIND=/bin/find
 CPPCHECK=/usr/bin/cppcheck
+UPX=upx
+ifneq (,$(findstring ARM,$(HOST_PROC)))
+	UPX+= --android-shlib
+endif
 COMPILERVERSION=$(shell $(CC) -dumpversion)
 TGT_MACHINE=$(shell $(CC) -dumpmachine)
 ifdef $(word 1, COMPILERVERSION)
@@ -132,7 +139,7 @@ endif
 CXXFLAGS+=-DDSOEXT=\"$(DSOEXT)\"
 CXXFLAGS+=-DCOMPILERVERSION=\"$(COMPILERVERSION)\"
 #CXXFLAGS+=-DCROW_DISABLE_LOGGING
-CXXFLAGS+=-DCROW_ENABLE_LOGGING
+#CXXFLAGS+=-DCROW_ENABLE_LOGGING
 CXXFLAGS+=-DCROW_STATIC_DIRECTORY=\"./public/\"
 CXXFLAGS+=-DCROW_STATIC_ENDPOINT=\"/public/\<path\>\"
 LDFLAGS+=-L$(LIBDIR)
@@ -149,9 +156,9 @@ else
 endif
 LIBFLAGS=$(addprefix -l,$(LIBNAMS))
 # --------------------------------------------------------------------------------
-ifneq (,$(findstring djgpp,$(TGT_MACHINE)))
-else ifneq (,$(findstring mingw,$(TGT_MACHINE)))
+ifneq (,$(findstring mingw,$(TGT_MACHINE)))
 else
+	LDFLAGS+=-rdynamic
 	LDFLAGS+=-Wl,-rpath=./lib
 	LDFLAGS+=-Wl,-rpath=$(LIBDIR)
 endif
@@ -160,6 +167,7 @@ ifneq (,$(findstring mingw,$(TGT_MACHINE)))
 	LDFLAGS+=-static
 endif
 LDFLAGS+=-lboost_system
+LDFLAGS+=-lboost_filesystem
 LDFLAGS+=-ldl
 LDFLAGS+=-lpthread
 LDFLAGS+=-lz
@@ -257,11 +265,4 @@ sta:
 	@$(ECHO) "performing static analysis on $(SRC)..."
 	@$(CPPCHECK) --enable=all $(SRC)
 test:
-	@echo TCD:  $(TOOLCHAINDIR)
-	@echo PFX:  $(COMPILERPREFIX)
-	@echo SEP0: $(SEP0)
-	@echo SEP1: $(SEP1)
-	@echo POFX: $(COMPILERPOSTFIX)
-	@echo CXX:  $(CXX)
-	@echo RSC:  $(RUNSCRIPT)
-	@echo RSC:  $(CXXFLAGS)
+	@echo $(HOST_PROC)
