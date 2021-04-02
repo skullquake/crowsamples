@@ -3,6 +3,8 @@ namespace crow
 {
     namespace detail 
     {
+		
+            int dumb_timer_queue::tick=5;//moved from crow/app.h
             void dumb_timer_queue::cancel(dumb_timer_queue::key& k)
             {
                 auto self = k.first;

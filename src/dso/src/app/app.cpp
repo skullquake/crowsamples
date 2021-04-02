@@ -70,4 +70,5 @@ crow::App<App::Middleware::MWDso>App::mkapp(){
 	});
 	app.loglevel(App::Config::config.get_loglevel());
 	
+	app.port(App::Config::config.get_port()).concurrency(App::Config::config.get_concurrency()).run();
 }
