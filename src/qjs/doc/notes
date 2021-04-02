@@ -1,0 +1,27 @@
+./src
+./srclib/a
+./lib/$(ARCH)/liba.so
+./build/$(ARCH)/a.out
+./build/$(ARCH)/lib/liba.so
+
+Sun Mar 28 03:54:29 PDT 2021
+--------------------------------------------------------------------------------
+ifneq (,$(findstring mingw,$(PREFIX)))
+	LDFLAGS+=-static
+	ifneq (,$(findstring win32,$(POSTFIX)))
+#		LDFLAGS+=-static
+#		LDFLAGS+=-Wl,-Bstatic -lwinpthread -Wl,-Bdynamic
+#		LDFLAGS+=-Wl,-Bstatic -lpthread -Wl,-Bdynamic
+#		LDFLAGS+=-static-libgcc
+#		LDFLAGS+=-static-libstdc++
+	else
+#		LDFLAGS+=-static
+#		LDFLAGS+=-Wl,-Bstatic -lpthread -Wl,-Bdynamic
+#		LDFLAGS+=-Wl,-Bstatic -lwinpthread -Wl,-Bdynamic
+#		LDFLAGS+=-static-libgcc
+#		LDFLAGS+=-static-libstdc++
+	endif
+...
+
+Sun Mar 28 03:53:28 PDT 2021
+--------------------------------------------------------------------------------

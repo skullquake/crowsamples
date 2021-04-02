@@ -1,0 +1,258 @@
+ifndef TOOLCHAINDIR
+	TOOLCHAINDIR=$(shell dirname `which gcc`)/
+endif
+ifndef COMPILERPREFIX
+	COMPILERPREFIX=
+endif
+ifndef COMPILERPOSTFIX
+	COMPILERPOSTFIX=
+endif
+ifeq ($(OS),Windows_NT)
+   HOST_OS := Windows
+   SHELL = cmd
+    ifeq '$(findstring ;,$(PATH))' ';'
+       HOST_OS := Windows
+    else
+        HOST_OS := $(shell uname 2>/dev/null || echo Unknown)
+        HOST_OS := $(patsubst CYGWIN%,Cygwin,$(HOST_OS))
+        HOST_OS := $(patsubst MSYS%,MSYS,$(HOST_OS))
+        HOST_OS := $(patsubst MINGW64%,MINGW,$(HOST_OS))
+        HOST_OS := $(patsubst MINGW%,MINGW64,$(HOST_OS))
+    endif
+    EXT := .exe
+else
+    UNAME_S := $(shell uname -s)
+    HOST_OS := $(UNAME_S)
+    ifeq ($(UNAME_S),Linux)
+    endif
+    ifeq ($(UNAME_S),Darwin)
+    endif
+    ifneq ($(filter arm%,$(UNAME_P)),)
+        HOST_OS=ARM
+    endif
+    EXT := .out
+endif
+ifeq ($(HOST_OS),$(filter $(HOST_OS),Windows_NT MINGW MINGW64 MSYS))
+        ifeq ($(PROCESSOR_ARCHITEW6432),AMD64)
+            HOST_PROC=AMD64
+        else
+        ifeq ($(PROCESSOR_ARCHITECTURE),AMD64)
+            HOST_PROC=AMD64
+        endif
+        ifeq ($(PROCESSOR_ARCHITECTURE),x86)
+            HOST_PROC=IA32
+        endif
+    endif
+else ifeq ($(HOST_OS),$(filter $(HOST_OS),Linux Darwin ARM))
+    UNAME_M := $(shell uname -m)
+    ifeq ($(UNAME_M),x86_64)
+        HOST_PROC=AMD64
+    endif
+    ifeq ($(UNAME_M),aarch64)
+        HOST_PROC=ARM
+    endif
+    ifneq ($(filter %86,$(UNAME_M)),)
+        HOST_PROC=IA32
+    endif
+endif
+MAKEFILEPATH:=$(abspath $(lastword $(MAKEFILE_LIST)))
+CURRENTDIRNAM:=$(notdir $(patsubst %/,%,$(dir $(MAKEFILEPATH))))
+CXX=$(TOOLCHAINDIR)/g++
+CC=$(TOOLCHAINDIR)gcc
+AR=$(TOOLCHAINDIR)ar
+LD=$(TOOLCHAINDIR)ld
+STRIP=$(TOOLCHAINDIR)strip
+MKDIR=/bin/mkdir
+RM=/bin/rmdir
+ECHO=/bin/echo
+CP=/bin/cp
+RM=/bin/rm
+FIND=/bin/find
+CPPCHECK=/usr/bin/cppcheck
+UPX=upx
+ifneq (,$(findstring ARM,$(HOST_PROC)))
+	UPX+= --android-shlib
+endif
+COMPILERVERSION=$(shell $(CC) -dumpversion)
+TGT_MACHINE=$(shell $(CC) -dumpmachine)
+ifdef $(word 1, COMPILERVERSION)
+	SEP2=-
+else
+	SEP2=
+endif
+SRCDIR=src
+SRC:=$(shell find $(SRCDIR) -name '*.c' -o -name '*.cpp')
+OBJROOT=./obj
+OBJDIR=$(OBJROOT)/$(TGT_MACHINE)/
+OBJS=$(addprefix $(OBJDIR),$(patsubst %.c,%.o ,$(patsubst %.cpp,%.o,$(SRC))))
+BINNAM=$(CURRENTDIRNAM)
+BUILDROOT=build
+BINDIR=$(BUILDROOT)/$(TGT_MACHINE)/
+BIN=$(BINDIR)$(BINNAM)$(BINEXT)
+RUNSCRIPT=$(BINDIR)run$(SCREXT)
+ifneq (,$(findstring mingw,$(TGT_MACHINE)))
+	BINEXT=.exe
+	SCREXT=.bat
+else ifneq (,$(findstring linux,$(TGT_MACHINE)))
+	BINEXT=.out
+	SCREXT=.sh
+else
+	BINEXT=.out
+	SCREXT=.sh
+endif
+ifneq (,$(findstring mingw,$(TGT_MACHINE)))
+	DSOEXT=.dll
+else ifneq (,$(findstring linux,$(TGT_MACHINE)))
+	DSOEXT=.so
+else
+	DSOEXT=.so
+endif
+LIBDIR=./build/$(TGT_MACHINE)/lib
+LIBCOMPILERPREFIX=lib
+ifneq (,$(findstring mingw,$(TGT_MACHINE)))
+	UPX=upx
+else ifneq (,$(findstring linux,$(TGT_MACHINE)))
+	UPX=echo skipping upx
+else
+	UPX=echo skipping upx
+endif
+
+#--------------------------------------------------------------------------------
+#quickjs
+#--------------------------------------------------------------------------------
+CFLAGS+=-Wall
+CFLAGS+=-O2
+CFLAGS+=-I./src
+CFLAGS+=-g -MMD
+CFLAGS+=-Wno-array-bounds -Wno-format-truncation
+CFLAGS+=-D_GNU_SOURCE
+CFLAGS+=-DCONFIG_VERSION=\"2020-11-08\"
+CFLAGS+=-DCONFIG_ATOMICS
+#--------------------------------------------------------------------------------
+#quickjs
+CXXFLAGS+=-std=c++17
+CXXFLAGS+=-Wall
+CXXFLAGS+=-O2
+CXXFLAGS+=-I./
+CXXFLAGS+=-I./src
+CXXFLAGS+=-I./src/crow
+CXXFLAGS+=-I./src/quickjspp
+#--------------------------------------------------------------------------------
+#crow
+#--------------------------------------------------------------------------------
+CXXFLAGS+=-DCROW_STATIC_DIRECTORY=\"./public/\"
+CXXFLAGS+=-DCROW_STATIC_ENDPOINT=\"/public/\<path\>\"
+#CXXFLAGS+=-DCROW_DISABLE_LOGGING
+#CXXFLAGS+=-DCROW_ENABLE_LOGGING
+#--------------------------------------------------------------------------------
+LDFLAGS+=-L$(LIBDIR)
+ifeq "$(COMPILERVERSION)" "7"
+	LDFLAGS+=-lstdc++fs
+endif
+# --------------------------------------------------------------------------------
+LIBNAMS=$(shell (ls $(LIBDIR)|cut -f1 -d".")|cut -c4-)
+LIBFLAGS=$(addprefix -l,$(LIBNAMS))
+# --------------------------------------------------------------------------------
+ifneq (,$(findstring mingw,$(TGT_MACHINE)))
+else
+	LDFLAGS+=-rdynamic
+#	LDFLAGS+=-Wl,-rpath=./lib
+#	LDFLAGS+=-Wl,-rpath=$(LIBDIR)
+endif
+# --------------------------------------------------------------------------------
+ifneq (,$(findstring mingw,$(TGT_MACHINE)))
+	LDFLAGS+=-static
+endif
+LDFLAGS+=-lboost_system
+LDFLAGS+=-lboost_filesystem
+LDFLAGS+=-ldl
+LDFLAGS+=-lpthread
+LDFLAGS+=-lz
+ifneq (,$(findstring mingw,$(TGT_MACHINE)))
+	# wrap dso dynspec: start
+	ifneq (,$(findstring win32,$(COMPILERPOSTFIX)))
+		LDFLAGS+=-Wl,-Bdynamic
+	else
+		LDFLAGS+=-Wl,-Bdynamic
+	endif
+endif
+LDFLAGS+=$(LIBFLAGS)
+ifneq (,$(findstring mingw,$(COMPILERPREFIX)))
+	# wrap dso dynspec: end
+	ifneq (,$(findstring win32,$(COMPILERPOSTFIX)))
+		LDFLAGS+=-Wl,-Bstatic
+	else
+		LDFLAGS+=-Wl,-Bstatic
+	endif
+endif
+# --------------------------------------------------------------------------------
+ifeq (run,$(firstword $(MAKECMDGOALS)))
+  RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  $(eval $(RUN_ARGS):;@:)
+endif
+all:$(RUNSCRIPT)
+$(BIN):$(OBJS)
+	@echo "generating $@..."
+	@-$(MKDIR) -p $(@D)
+	$(CXX) \
+		$(OBJS) \
+		$(LDFLAGS) \
+		-o $(BIN) 
+$(OBJDIR)%.o: %.c
+	@echo "generating $@..."
+	@-$(MKDIR) -p $(@D)
+	@$(CC)\
+		$(CFLAGS)\
+		-c $<\
+		-o $@
+$(OBJDIR)%.o: %.cpp
+	@echo "generating $@..."
+	@-$(MKDIR) -p $(@D)
+	$(CXX)\
+		$(CXXFLAGS)\
+		-c $<\
+		-o $@
+strip:$(BIN)
+	@echo "stripping $(BIN)..."
+	@-$(STRIP) $(BIN) --strip-unneeded
+compress:strip
+	@echo "compressing $(BIN)..."
+	@-$(UPX) $(BIN)
+ifneq (,$(findstring mingw,$(COMPILERPREFIX)))
+$(RUNSCRIPT):compress
+	@echo "creating runscript for $(BIN)..."
+	@echo "@echo off" > $(RUNSCRIPT)
+	@echo "setlocal" >> $(RUNSCRIPT)
+	@echo "set PATH=.\lib;%PATH%" >> $(RUNSCRIPT)
+	@echo ".\\\$(BINNAM)$(BINEXT)" >> $(RUNSCRIPT)
+else ifneq (,$(findstring linux,$(COMPILERPREFIX)))
+$(RUNSCRIPT):compress
+	@echo "creating runscript for $(BIN)..."
+	@echo "#!/bin/bash" > $(RUNSCRIPT)
+	@echo "./a.out" >> $(RUNSCRIPT)
+else
+$(RUNSCRIPT):compress
+	@echo "creating runscript for $(BIN)..."
+	@echo "#!/bin/bash"
+	@echo "./a.out"
+endif
+run:$(BIN)
+	@echo "running $(BIN)..."
+	@$(BIN) $(RUN_ARGS) 
+.phony:clean sta
+clean:
+	@echo "cleaning ..."
+	@echo "removing $(BIN)..."
+	@-rm $(BIN)
+	@echo "removing $(OBJDIR)..."
+	@-rm -rf $(OBJDIR)
+cleanall:
+	@echo "removing $(BUILDROOT)..."
+	@-$(RM) -rf $(BUILDROOT)
+	@echo "removing $(OBJROOT)..."
+	@-$(RM) -rf $(OBJROOT)
+sta:
+	@$(ECHO) "performing static analysis on $(SRC)..."
+	@$(CPPCHECK) --enable=all $(SRC)
+test:
+	@echo $(HOST_PROC)
