@@ -1,4 +1,4 @@
-#include"./app.hpp"
+#include"./srv.hpp"
 #include<iostream>
 #include<sstream>
 #include<vector>
@@ -8,12 +8,10 @@
 #include<chrono>
 #include<atomic>
 #include<mutex>
-#include"crow/crow.h"
-#include"app/config/config.hpp"
-#include"app/middleware/dso.hpp"
-#include"dso/dso.hpp"
-crow::App<App::Middleware::MWDso>App::mkapp(){
-	crow::App<App::Middleware::MWDso>app;
+#include"srv/config/config.hpp"
+#include"srv/dso/dso.hpp"
+crow::App<Srv::Middleware::MWDso>Srv::init(){
+	crow::App<Srv::Middleware::MWDso>app;
 	//--------------------------------------------------------------------------------
 	//Obtain logging level
 	//--------------------------------------------------------------------------------
@@ -68,7 +66,7 @@ crow::App<App::Middleware::MWDso>App::mkapp(){
 		}
 		return j;
 	});
-	app.loglevel(App::Config::config.get_loglevel());
+	app.loglevel(Srv::Config::config.get_loglevel());
 	
-	app.port(App::Config::config.get_port()).concurrency(App::Config::config.get_concurrency()).run();
+	app.port(Srv::Config::config.get_port()).concurrency(Srv::Config::config.get_concurrency()).run();
 }

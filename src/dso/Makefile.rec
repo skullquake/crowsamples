@@ -85,19 +85,12 @@ SRC:=$(shell find $(SRCDIR) -name '*.c' -o -name '*.cpp')
 OBJROOT=./obj
 OBJDIR=$(OBJROOT)/$(TGT_MACHINE)/
 OBJS=$(addprefix $(OBJDIR),$(patsubst %.c,%.o ,$(patsubst %.cpp,%.o,$(SRC))))
-ifneq (,$(findstring djgpp,$(TGT_MACHINE)))
-	BINNAM=a
-else
-	BINNAM=$(CURRENTDIRNAM)
-endif
+BINNAM=$(CURRENTDIRNAM)
 BUILDROOT=build
 BINDIR=$(BUILDROOT)/$(TGT_MACHINE)/
 BIN=$(BINDIR)$(BINNAM)$(BINEXT)
 RUNSCRIPT=$(BINDIR)run$(SCREXT)
 ifneq (,$(findstring mingw,$(TGT_MACHINE)))
-	BINEXT=.exe
-	SCREXT=.bat
-else ifneq (,$(findstring djgpp,$(TGT_MACHINE)))
 	BINEXT=.exe
 	SCREXT=.bat
 else ifneq (,$(findstring linux,$(TGT_MACHINE)))
@@ -109,8 +102,6 @@ else
 endif
 ifneq (,$(findstring mingw,$(TGT_MACHINE)))
 	DSOEXT=.dll
-else ifneq (,$(findstring djgpp,$(TGT_MACHINE)))
-	DSOEXT=.dxe
 else ifneq (,$(findstring linux,$(TGT_MACHINE)))
 	DSOEXT=.so
 else
@@ -119,8 +110,6 @@ endif
 LIBDIR=./build/$(TGT_MACHINE)/lib
 LIBCOMPILERPREFIX=lib
 ifneq (,$(findstring mingw,$(TGT_MACHINE)))
-	UPX=upx
-else ifneq (,$(findstring djgpp,$(TGT_MACHINE)))
 	UPX=upx
 else ifneq (,$(findstring linux,$(TGT_MACHINE)))
 	UPX=echo skipping upx
@@ -132,13 +121,6 @@ CXXFLAGS+=-O2
 CXXFLAGS+=-I./
 CXXFLAGS+=-I./src
 CXXFLAGS+=-I./src/crow
-ifneq (,$(findstring djgpp,$(TGT_MACHINE)))
-	CXXFLAGS+=-DENTRYPOINT=\"_appmain\"
-else
-	CXXFLAGS+=-DENTRYPOINT=\"appmain\"
-endif
-CXXFLAGS+=-DDSOEXT=\"$(DSOEXT)\"
-CXXFLAGS+=-DCOMPILERVERSION=\"$(COMPILERVERSION)\"
 #CXXFLAGS+=-DCROW_DISABLE_LOGGING
 #CXXFLAGS+=-DCROW_ENABLE_LOGGING
 CXXFLAGS+=-DCROW_STATIC_DIRECTORY=\"./public/\"
@@ -148,13 +130,7 @@ ifeq "$(COMPILERVERSION)" "7"
 	LDFLAGS+=-lstdc++fs
 endif
 # --------------------------------------------------------------------------------
-ifneq (,$(findstring djgpp,$(TGT_MACHINE)))
-	#import libs
-	LIBNAMS=$(shell (ls $(LIBDIR)|grep libi|cut -f1 -d".")|cut -c4-)
-else
-	#libs
-	LIBNAMS=$(shell (ls $(LIBDIR)|cut -f1 -d".")|cut -c4-)
-endif
+LIBNAMS=$(shell (ls $(LIBDIR)|cut -f1 -d".")|cut -c4-)
 LIBFLAGS=$(addprefix -l,$(LIBNAMS))
 # --------------------------------------------------------------------------------
 ifneq (,$(findstring mingw,$(TGT_MACHINE)))
@@ -228,13 +204,6 @@ $(RUNSCRIPT):compress
 	@echo "@echo off" > $(RUNSCRIPT)
 	@echo "setlocal" >> $(RUNSCRIPT)
 	@echo "set PATH=.\lib;%PATH%" >> $(RUNSCRIPT)
-	@echo ".\\\$(BINNAM)$(BINEXT)" >> $(RUNSCRIPT)
-else ifneq (,$(findstring djgpp,$(COMPILERPREFIX)))
-$(RUNSCRIPT):compress
-	@echo "creating runscript for $(BIN)..."
-	@echo "@echo off" > $(RUNSCRIPT)
-	@echo "set PATH=.\lib;%PATH%" >> $(RUNSCRIPT)
-	@echo "set LD_LIBRARY_PATH=.\lib" >> $(RUNSCRIPT)
 	@echo ".\\\$(BINNAM)$(BINEXT)" >> $(RUNSCRIPT)
 else ifneq (,$(findstring linux,$(COMPILERPREFIX)))
 $(RUNSCRIPT):compress

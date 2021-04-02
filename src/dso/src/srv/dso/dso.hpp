@@ -1,7 +1,7 @@
 #ifndef h3245afcc92dc11ebbed0132767120701
 #define h3245afcc92dc11ebbed0132767120701
 #include<map>
-namespace App{
+namespace Srv{
 	namespace DSO{
 		class DSOMgr{
 			public:

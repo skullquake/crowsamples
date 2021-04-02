@@ -3,11 +3,11 @@
 #include<fstream>
 #include<sstream>
 #include"crow/json.h"
-App::Config::Config::Config():
-	host(App::Config::default_host),
-	port(App::Config::default_port),
-	loglevel(App::Config::default_loglevel),
-	concurrency(App::Config::default_concurrency)
+Srv::Config::Config::Config():
+	host(Srv::Config::default_host),
+	port(Srv::Config::default_port),
+	loglevel(Srv::Config::default_loglevel),
+	concurrency(Srv::Config::default_concurrency)
 {
 	try{
 		std::ifstream ifs("./res/config.json");
@@ -35,27 +35,27 @@ App::Config::Config::Config():
 			}
 			if(j.has("concurrency"))this->concurrency=j["concurrency"].i();
 		}catch(const std::exception&e){
-			std::cout<<"App::Config::Config::Config:error:failed to parse json"<<std::endl;
+			std::cout<<"Srv::Config::Config::Config:error:failed to parse json"<<std::endl;
 		}
 	}catch(const std::exception&e){
-		std::cout<<"App::Config::Config::Config:error:"<<e.what()<<std::endl;
+		std::cout<<"Srv::Config::Config::Config:error:"<<e.what()<<std::endl;
 	}
 }
-App::Config::Config::~Config(){
+Srv::Config::Config::~Config(){
 }
-std::string App::Config::Config::get_host(){
+std::string Srv::Config::Config::get_host(){
 	return this->host;
 }
-int App::Config::Config::get_port(){
+int Srv::Config::Config::get_port(){
 	return this->port;
 }
-crow::LogLevel App::Config::Config::get_loglevel(){
+crow::LogLevel Srv::Config::Config::get_loglevel(){
 	return this->loglevel;
 }
-int App::Config::Config::get_concurrency(){
+int Srv::Config::Config::get_concurrency(){
 	return this->concurrency;
 }
-namespace App{
+namespace Srv{
 	namespace Config{
 		Config config;
 	}

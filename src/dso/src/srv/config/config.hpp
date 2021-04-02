@@ -3,7 +3,7 @@
 #include"./config.hpp"
 #include<string>
 #include"crow/logging.h"
-namespace App{
+namespace Srv{
 	namespace Config{
 		const std::string default_host{"0.0.0.0"};
 		const int default_port{8080};

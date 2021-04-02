@@ -69,31 +69,31 @@ Os getOs(){
     return Os::OTHER;//"Other";
     #endif
 }
-void App::Middleware::MWDso::before_handle(crow::request&req,crow::response&res,context&ctx){
-	CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:start";
+void Srv::Middleware::MWDso::before_handle(crow::request&req,crow::response&res,context&ctx){
+	CROW_LOG_DEBUG<<"Srv::Middlware::MWDso::before_handle:start";
 	std::string path=boost::filesystem::path(std::string(CROW_STATIC_DIRECTORY)+req.url).lexically_normal().string();
 	if(canLoadDSO(path)&&fileExists(path)){
-		CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:"<<path<<":opening...";
+		CROW_LOG_DEBUG<<"Srv::Middlware::MWDso::before_handle:"<<path<<":opening...";
 		void*mod=dlopen(path.c_str(),RTLD_LAZY);
 		if(mod!=nullptr){
-			CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:"<<path<<":opened";
+			CROW_LOG_DEBUG<<"Srv::Middlware::MWDso::before_handle:"<<path<<":opened";
 			auto sym=(int(*)(void*,void*))dlsym(mod,"entry");
 			if(sym!=nullptr){
-				CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:"<<path<<":symbol obtained";
+				CROW_LOG_DEBUG<<"Srv::Middlware::MWDso::before_handle:"<<path<<":symbol obtained";
 				sym(static_cast<void*>(&req),static_cast<void*>(&res));
 			}else{
 				std::string err{dlerror()};
-				CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:"<<path<<":failed to obtain symbol:"<<err;
+				CROW_LOG_DEBUG<<"Srv::Middlware::MWDso::before_handle:"<<path<<":failed to obtain symbol:"<<err;
 				res.add_header("Content-Type","application/json");
 				crow::json::wvalue j;
 				j["error"]=err;
 				res.write(j.dump());
 			}
 			dlclose(mod);
-			CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:"<<path<<":closed";
+			CROW_LOG_DEBUG<<"Srv::Middlware::MWDso::before_handle:"<<path<<":closed";
 		}else{
 			std::string err{dlerror()};
-			CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:"<<path<<"failed to open:"<<err;
+			CROW_LOG_DEBUG<<"Srv::Middlware::MWDso::before_handle:"<<path<<"failed to open:"<<err;
 			res.add_header("Content-Type","application/json");
 			crow::json::wvalue j;
 			j["error"]=err;
@@ -101,9 +101,9 @@ void App::Middleware::MWDso::before_handle(crow::request&req,crow::response&res,
 		}
 		res.end();
 	}
-	CROW_LOG_DEBUG<<"App::Middlware::MWDso::before_handle:end";
+	CROW_LOG_DEBUG<<"Srv::Middlware::MWDso::before_handle:end";
 }
-void App::Middleware::MWDso::after_handle(crow::request&req,crow::response&res,context&ctx){
-	CROW_LOG_DEBUG<<"App::Middlware::MWDso::after_handle:start";
-	CROW_LOG_DEBUG<<"App::Middlware::MWDso::after_handle:end";
+void Srv::Middleware::MWDso::after_handle(crow::request&req,crow::response&res,context&ctx){
+	CROW_LOG_DEBUG<<"Srv::Middlware::MWDso::after_handle:start";
+	CROW_LOG_DEBUG<<"Srv::Middlware::MWDso::after_handle:end";
 };
