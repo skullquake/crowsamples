@@ -123,6 +123,7 @@ endif
 CFLAGS+=-Wall
 CFLAGS+=-O2
 CFLAGS+=-I./src
+CFLAGS+=-I./src/sigar
 CFLAGS+=-g -MMD
 CFLAGS+=-Wno-array-bounds -Wno-format-truncation
 CFLAGS+=-D_GNU_SOURCE
@@ -137,6 +138,7 @@ CXXFLAGS+=-I./
 CXXFLAGS+=-I./src
 CXXFLAGS+=-I./src/crow
 CXXFLAGS+=-I./src/quickjspp
+CXXFLAGS+=-I./src/sigar
 #--------------------------------------------------------------------------------
 #crow
 #--------------------------------------------------------------------------------

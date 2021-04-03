@@ -1,0 +1,376 @@
+#.SILENT:
+#-------------------------------------------------------------------------------
+#DETECT OS
+#-------------------------------------------------------------------------------
+ifeq ($(OS),Windows_NT)
+   THEOS := Windows
+   SHELL = cmd
+    ifeq '$(findstring ;,$(PATH))' ';'
+       THEOS := Windows
+    else
+        THEOS := $(shell uname 2>/dev/null || echo Unknown)
+        THEOS := $(patsubst CYGWIN%,Cygwin,$(THEOS))
+        THEOS := $(patsubst MSYS%,MSYS,$(THEOS))
+        THEOS := $(patsubst MINGW64%,MINGW,$(THEOS))
+        THEOS := $(patsubst MINGW%,MINGW64,$(THEOS))
+    endif
+    EXT := .dll
+else
+    UNAME_S := $(shell uname -s)
+    THEOS := $(UNAME_S)
+    ifeq ($(UNAME_S),Linux)
+    endif
+    ifeq ($(UNAME_S),Darwin)
+    endif
+    ifneq ($(filter arm%,$(UNAME_P)),)
+        THEOS=ARM
+    endif
+    EXT := .so
+endif
+#-------------------------------------------------------------------------------
+#PROCESSOR DETECTION
+#-------------------------------------------------------------------------------
+ifeq ($(THEOS),$(filter $(THEOS),Windows_NT MINGW MINGW64 MSYS))
+        ifeq ($(PROCESSOR_ARCHITEW6432),AMD64)
+            PROC=AMD64
+        else
+        ifeq ($(PROCESSOR_ARCHITECTURE),AMD64)
+            PROC=AMD64
+        endif
+        ifeq ($(PROCESSOR_ARCHITECTURE),x86)
+            PROC=IA32
+        endif
+    endif
+else ifeq ($(THEOS),$(filter $(THEOS),Linux Darwin ARM))
+    UNAME_P := $(shell uname -p)
+    ifeq ($(UNAME_P),x86_64)
+        PROC=AMD64
+    endif
+    ifneq ($(filter %86,$(UNAME_P)),)
+        PROC=IA32
+    endif
+endif
+#-------------------------------------------------------------------------------
+CC=gcc
+CXX=g++
+NM=nm
+GCC_VERSION=$(shell $(CC) -dumpversion)
+STRIP=echo strip --strip-unneeded
+ifeq ($(THEOS),Windows)
+	UPX=upx -9
+else
+	UPX=echo skipping upx -9
+endif
+BINDIR=./bin/
+MAKEFILEPATH:= $(abspath $(lastword $(MAKEFILE_LIST)))
+CURRENTDIRNAM:= $(notdir $(patsubst %/,%,$(dir $(MAKEFILEPATH))))
+BINNAM=$(CURRENTDIRNAM)
+SRCDIR=src
+#resources
+RESDIR=src/res
+APPRESDIR=./res
+DEPLOYDIR=../../lib
+#-------------------------------------------------------------------------------
+#global flags
+#-------------------------------------------------------------------------------
+CFLAGS+=
+CFLAGS+=-I../include
+#CFLAGS+=-s
+CFLAGS+=-fvisibility=hidden
+CFLAGS+=-O2
+CFLAGS+=-I./src
+CFLAGS+=-fPIC
+CXXFLAGS+=
+CXXFLAGS+=-I../include
+#CXXFLAGS+=-s
+CXXFLAGS+=-fvisibility=hidden
+CXXFLAGS+=-O2
+CXXFLAGS+=-I./src
+CXXFLAGS+=-std=c++17
+CXXFLAGS+=-fPIC
+LDFLAGS+=-shared
+LDFLAGS+=
+LDFLAGS+=-L../../lib
+LDFLAGS+=-Wl,-rpath=./lib
+LDFLAGS+=-lquickjspp
+#-------------------------------------------------------------------------------
+#global version specific flags
+#-------------------------------------------------------------------------------
+ifeq "$(GCC_VERSION)" "7"
+	LDFLAGS+=-lstdc++fs
+endif
+#-------------------------------------------------------------------------------
+#windows flags
+#-------------------------------------------------------------------------------
+ifeq ($(THEOS),Windows)
+	CXXFLAGS+=-fpermissive
+	CXXFLAGS+=-Ic:/opt/gcc/17.1/MinGW/include
+	CXXFLAGS+=-D_WIN32
+	BINDIR=./bin/windows/
+else
+#-------------------------------------------------------------------------------
+#linux flags
+#-------------------------------------------------------------------------------
+	LDFLAGS+=-rdynamic
+	BINDIR=./bin/linux/
+endif
+#-------------------------------------------------------------------------------
+#BITBUCKET
+#-------------------------------------------------------------------------------
+ifeq ($(THEOS),Windows)
+	SILENT=> NUL 2>&1
+else
+	SILENT=> /dev/null 2>&1
+endif
+#-------------------------------------------------------------------------------
+#RM/CP
+#-------------------------------------------------------------------------------
+ifeq ($(THEOS),Windows)
+	MKDIR=mkdir
+	RM=erase
+	RMDIR=rmdir /s/q
+	CP=copy /Y
+	CPDIR=xcopy /E/H/Y/Q/I
+else
+	MKDIR=mkdir -p
+	RM=rm -r
+	RMDIR=rm -r
+	CP=cp -r
+	CPDIR=cp -r
+endif
+#-------------------------------------------------------------------------------
+#TOUCH
+#-------------------------------------------------------------------------------
+ifeq ($(THEOS),Windows)
+define FNTOUCH
+$(shell (for %%a in ($(1)) do if exist "%%~a" (pushd "%%~dpa" && ( copy /b "%%~nxa"+,, & popd )) else (type nul > "%%~fa")) >nul 2>&1)
+endef
+else
+define FNTOUCH
+touch $(1)
+endef
+endif
+#-------------------------------------------------------------------------------
+#PATH SEPERATORS
+#-------------------------------------------------------------------------------
+PATHSEPSTRIPPED=$(patsubst %\,%,$(PATHSEP))
+ifeq ($(THEOS),Windows)
+	PATHSEP=\\
+else
+	PATHSEP=/
+endif
+ifeq ($(THEOS),Windows)
+	_SRC=$(subst /,$(PATHSEPSTRIPPED),$(SRC))
+else
+	_SRC=$(SRC)
+endif
+#resources
+ifeq ($(THEOS),Windows)
+	_RES=$(subst /,$(PATHSEPSTRIPPED),$(RES))
+else
+	_RES=$(RES)
+endif
+ifeq ($(THEOS),Windows)
+	_BIN=$(subst /,$(PATHSEPSTRIPPED),$(BIN))
+else
+	_BIN=$(BIN)
+endif
+ifeq ($(THEOS),Windows)
+	_BINDIR=$(subst /,$(PATHSEPSTRIPPED),$(BINDIR))
+else
+	_BINDIR=$(BINDIR)
+endif
+ifeq ($(THEOS),Windows)
+	_SRCDIR=$(subst /,$(PATHSEPSTRIPPED),$(SRCDIR))
+else
+	_SRCDIR=$(SRCDIR)
+endif
+#resources
+ifeq ($(THEOS),Windows)
+	_RESDIR=$(subst /,$(PATHSEPSTRIPPED),$(RESDIR))
+else
+	_RESDIR=$(RESDIR)
+endif
+ifeq ($(THEOS),Windows)
+	_RESOBJ=$(subst /,$(PATHSEPSTRIPPED),$(RESOBJ))
+else
+	_RESOBJ=$(RESOBJ)
+endif
+ifeq ($(THEOS),Windows)
+	_DEPLOYDIR=$(subst /,$(PATHSEPSTRIPPED),$(DEPLOYDIR))
+else
+	_DEPLOYDIR=$(DEPLOYDIR)
+endif
+ifeq ($(THEOS),Windows)
+	_APPRESDIR=$(subst /,$(PATHSEPSTRIPPED),$(APPRESDIR))
+else
+	_APPRESDIR=$(APPRESDIR)
+endif
+#-------------------------------------------------------------------------------
+ifeq ($(THEOS),Windows)
+	_SRC:=$(shell for %%G in (.c, .cpp) do for /f "tokens=1* delims=\" %%A in ('forfiles /p $(_SRCDIR) /s /m *%%G /c "cmd /c @echo @relpath"') do @for %%F in (^"%%B) do @echo $(_SRCDIR)$(PATHSEPSTRIPPED)%%~F)
+else
+	_SRC:=$(shell find $(_SRCDIR) -name '*.c' -o -name '*.cpp')
+endif
+#resources
+ifeq ($(THEOS),Windows)
+	_RES:=$(shell for %%G in (.js, .txt) do for /f "tokens=1* delims=\" %%A in ('forfiles /p $(_RESDIR) /s /m *%%G /c "cmd /c @echo @relpath"') do @for %%F in (^"%%B) do @echo $(_RESDIR)$(PATHSEPSTRIPPED)%%~F)
+else
+	_RES:=$(shell find $(_RESDIR) -name '*.js' -o -name '*.txt')
+endif
+OBJS=$(addprefix $(_BINDIR),$(patsubst %.c,%.o ,$(patsubst %.cpp,%.o,$(_SRC))))
+ifeq ($(THEOS),Windows)
+	_OBJS=$(subst /,$(PATHSEPSTRIPPED),$(OBJS))
+else
+	_OBJS=$(OBJS)
+endif
+_BIN=$(_BINDIR)$(BINNAM)$(EXT)
+ifeq ($(THEOS),Windows)
+	_RUNSCRIPT=$(subst /,$(PATHSEPSTRIPPED),./run.bat)
+else
+	_RUNSCRIPT=./run
+endif
+#resources
+_RESOBJ=$(_BINDIR)res.o
+RESOBJS=$(addprefix $(_BINDIR),$(patsubst %.js,%.o ,$(patsubst %.txt,%.o,$(_RES))))
+ifeq ($(THEOS),Windows)
+	_RESOBJS=$(subst /,$(PATHSEPSTRIPPED),$(RESOBJS))
+else
+	_RESOBJS=$(RESOBJS)
+endif
+#--------------------------------------------------------------------------------
+#windows resources
+#--------------------------------------------------------------------------------
+ifeq ($(THEOS),Windows)
+	RSRCDIR=./res
+	_RSRCDIR=$(subst /,$(PATHSEPSTRIPPED),$(RSRCDIR))
+	_RSRCDEPS:=$(shell for %%G in (.ico) do for /f "tokens=1* delims=\" %%A in ('forfiles /p $(_RSRCDIR) /s /m *%%G /c "cmd /c @echo @relpath"') do @for %%F in (^"%%B) do @echo $(_RSRCDIR)$(PATHSEPSTRIPPED)%%~F)
+	RSRCSRC=./src/winres/app.rc
+	_RSRCSRC=$(subst /,$(PATHSEPSTRIPPED),$(RSRCSRC))
+	_RSRC=$(_BINDIR)app.res
+else
+endif
+#-------------------------------------------------------------------------------
+#RUN
+#-------------------------------------------------------------------------------
+ifeq (run,$(firstword $(MAKECMDGOALS)))
+  RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  $(eval $(RUN_ARGS):;@:)
+endif
+#-------------------------------------------------------------------------------
+all:deploy
+#-------------------------------------------------------------------------------
+deploy:$(_BIN)
+	@echo deploying $(_BIN) to $(_DEPLOYDIR)
+	$(CP) $(_BIN) $(_DEPLOYDIR)
+nm:$(_BIN)
+	$(NM) $(_BIN)
+$(_BIN):$(_OBJS) $(_RESOBJS) $(_RSRC)
+	@echo "generating $@..."
+	$(CXX) \
+		$(_OBJS) \
+		$(_RESOBJS) \
+		$(LDFLAGS) \
+		-o $(_BIN) \
+		$(_RSRC)
+	$(STRIP) $(_BIN)
+	$(UPX) $(_BIN)
+#-------------------------------------------------------------------------------
+$(_BINDIR)\%.o: %.c
+	@echo "generating $@..."
+	@-$(MKDIR) $(@D) $(SILENT)
+	$(CC)\
+		$(CFLAGS)\
+		-c $<\
+		-o $@
+	$(STRIP) $@
+$(_BINDIR)\%.o: %.cpp
+	@echo "generating $@..."
+	@-$(MKDIR) $(@D) $(SILENT)
+	$(CXX)\
+		$(CXXFLAGS)\
+		-c $<\
+		-o $@
+	$(STRIP) $@
+# --- kludge ... sort out ---
+$(_BINDIR)%.o: %.c
+	@echo "generating $@..."
+	@-$(MKDIR) $(@D) $(SILENT)
+	$(CC)\
+		$(CFLAGS)\
+		-c $<\
+		-o $@
+	$(STRIP) $@
+$(_BINDIR)%.o: %.cpp
+	@echo "generating $@..."
+	@-$(MKDIR) $(@D) $(SILENT)
+	$(CXX)\
+		$(CXXFLAGS)\
+		-c $<\
+		-o $@
+	$(STRIP) $@
+#-------------------------------------------------------------------------------
+#resources
+#-------------------------------------------------------------------------------
+$(_BINDIR)\%.o: %.js
+	@echo "generating $@..."
+	@-$(MKDIR) $(@D) $(SILENT)
+	ld\
+		-r\
+		-b binary\
+		-o $@\
+		$<
+$(_BINDIR)\%.o: %.txt
+	@echo "generating $@..."
+	@-$(MKDIR) $(@D) $(SILENT)
+	ld\
+		-r\
+		-b binary\
+		-o $@\
+		$<
+# --- kludge ... sort out ---
+$(_BINDIR)%.o: %.js
+	@echo "generating $@..."
+	@-$(MKDIR) $(@D) $(SILENT)
+	ld\
+		-r\
+		-b binary\
+		-o $@\
+		$<
+$(_BINDIR)%.o: %.txt
+	@echo "generating $@..."
+	@-$(MKDIR) $(@D) $(SILENT)
+	ld\
+		-r\
+		-b binary\
+		-o $@\
+		$<
+#-------------------------------------------------------------------------------
+#WINDOWS RESOURCE
+#-------------------------------------------------------------------------------
+$(_RSRC): $(_RSRCSRC) $(_RSRCDEPS)
+	windres $(_RSRCSRC) \
+		-O coff \
+		-o $(_RSRC)
+#	ie4uinit.exe -show
+#	ie4uinit.exe -ClearIconCache
+#-------------------------------------------------------------------------------
+define dump
+objdump $(1) -t
+endef
+dumpall:\
+	$(_OBJS)
+	$(foreach obj,$(_OBJS),$(call dump,$(obj)))
+#-------------------------------------------------------------------------------
+.phony:test
+#-------------------------------------------------------------------------------
+clean:
+	@-$(RMDIR) $(_BINDIR) $(SILENT)
+#-------------------------------------------------------------------------------
+ifeq (test,$(firstword $(MAKECMDGOALS)))
+  TEST_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  $(eval $(TEST_ARGS):;@:)
+endif
+#-------------------------------------------------------------------------------
+test:
+	echo $(LDFLAGS)

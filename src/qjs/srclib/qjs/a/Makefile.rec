@@ -1,0 +1,198 @@
+ifndef TOOLCHAINDIR
+	TOOLCHAINDIR=$(shell dirname `which gcc`)/../
+endif
+ifndef COMPILERPREFIX
+	COMPILERPREFIX=
+endif
+ifndef COMPILERPOSTFIX
+	COMPILERPOSTFIX=
+endif
+ifdef $(word 1, COMPILERPREFIX)
+	SEP0=-
+else
+	SEP0=
+endif
+ifdef $(word 1, COMPILERPOSTFIX)
+	SEP1=-
+else
+	SEP1=
+endif
+ifeq ($(OS),Windows_NT)
+   HOST_OS := Windows
+   SHELL = cmd
+    ifeq '$(findstring ;,$(PATH))' ';'
+       HOST_OS := Windows
+    else
+        HOST_OS := $(shell uname 2>/dev/null || $(ECHO) Unknown)
+        HOST_OS := $(patsubst CYGWIN%,Cygwin,$(HOST_OS))
+        HOST_OS := $(patsubst MSYS%,MSYS,$(HOST_OS))
+        HOST_OS := $(patsubst MINGW64%,MINGW,$(HOST_OS))
+        HOST_OS := $(patsubst MINGW%,MINGW64,$(HOST_OS))
+    endif
+    EXT := .exe
+else
+    UNAME_S := $(shell uname -s)
+    HOST_OS := $(UNAME_S)
+    ifeq ($(UNAME_S),Linux)
+    endif
+    ifeq ($(UNAME_S),Darwin)
+    endif
+    ifneq ($(filter arm%,$(UNAME_P)),)
+        HOST_OS=ARM
+    endif
+    EXT := .so
+endif
+ifeq ($(HOST_OS),$(filter $(HOST_OS),Windows_NT MINGW MINGW64 MSYS))
+        ifeq ($(PROCESSOR_ARCHITEW6432),AMD64)
+            HOST_PROC=AMD64
+        else
+        ifeq ($(PROCESSOR_ARCHITECTURE),AMD64)
+            HOST_PROC=AMD64
+        endif
+        ifeq ($(PROCESSOR_ARCHITECTURE),x86)
+            HOST_PROC=IA32
+        endif
+    endif
+else ifeq ($(HOST_OS),$(filter $(HOST_OS),Linux Darwin ARM))
+    UNAME_M := $(shell uname -m)
+    ifeq ($(UNAME_M),x86_64)
+        HOST_PROC=AMD64
+    endif
+    ifneq ($(filter %86,$(UNAME_P)),)
+        HOST_PROC=IA32
+    endif
+    ifeq ($(UNAME_M),aarch64)
+        HOST_PROC=AARCH64
+    endif
+endif
+RM=/bin/rm
+CP=/bin/cp
+FIND=/bin/find
+MKDIR=/bin/mkdir
+ECHO=/bin/echo
+CAT=/bin/cat
+ECHO=/bin/echo
+MV=/bin/mv
+CXX=$(TOOLCHAINDIR)bin/$(COMPILERPREFIX)$(SEP0)g++$(SEP1)$(COMPILERPOSTFIX)
+CC=$(TOOLCHAINDIR)bin/$(COMPILERPREFIX)$(SEP0)gcc$(SEP1)$(COMPILERPOSTFIX)
+AR=$(TOOLCHAINDIR)bin/$(COMPILERPREFIX)$(SEP0)ar$(SEP1)$(COMPILERPOSTFIX)
+LD=$(TOOLCHAINDIR)bin/$(COMPILERPREFIX)$(SEP0)ld$(SEP1)$(COMPILERPOSTFIX)
+OBJDUMP=$(TOOLCHAINDIR)bin/$(COMPILERPREFIX)$(SEP0)objdump$(SEP1)$(COMPILERPOSTFIX)
+NM=$(TOOLCHAINDIR)bin/$(COMPILERPREFIX)$(SEP0)nm$(SEP1)$(COMPILERPOSTFIX)
+STRIP=$(TOOLCHAINDIR)bin/$(COMPILERPREFIX)$(SEP0)strip
+CPPCHECK=/usr/bin/cppcheck
+UPX=echo upx
+ifneq (,$(findstring AARCH64,$(HOST_PROC)))
+	UPX+= --android-shlib
+endif
+GCCVERSION=$(shell $(CC) -dumpversion)
+TGT_MACHINE=$(shell $(CC) -dumpmachine)
+ifdef $(word 1, GCCVERSION)
+	SEP2=-
+else
+	SEP2=
+endif
+#SRC+=./src/a.cpp
+#SRC+=./src/config/config.cpp
+SRCDIR=src
+BUILDROOT=build
+#BUILDDIR=$(BUILDROOT)/$(COMPILERPREFIX)$(SEP1)$(COMPILERPOSTFIX)
+BUILDDIR=$(BUILDROOT)/$(TGT_MACHINE)
+LIBDIR=$(BUILDDIR)/lib/
+#DEPLOYDIR=../../build/$(TGT_MACHINE)/lib/
+DEPLOYDIR=../../../qjsmod
+SRC:=$(shell find $(SRCDIR) -name '*.c' -o -name '*.cpp')
+OBJROOT=./obj/
+#OBJDIR=$(OBJROOT)$(COMPILERPREFIX)$(SEP1)$(COMPILERPOSTFIX)/
+OBJDIR=$(OBJROOT)$(TGT_MACHINE)/
+OBJS=$(addprefix $(OBJDIR),$(patsubst %.c,%.o ,$(patsubst %.cpp,%.o,$(SRC))))
+MAKEFILEPATH:=$(abspath $(lastword $(MAKEFILE_LIST)))
+CURRENTDIRNAM:=$(notdir $(patsubst %/,%,$(dir $(MAKEFILEPATH))))
+LIBNAM=$(CURRENTDIRNAM)
+ifneq (,$(findstring mingw,$(TGT_MACHINE)))
+	DSOEXT=.dll
+else ifneq (,$(findstring linux,$(TGT_MACHINE)))
+	DSOEXT=.so
+else
+	DSOEXT=.so
+endif
+DSO=$(LIBDIR)/$(LIBNAM)$(DSOEXT)
+#DSO=$(LIBDIR)/lib$(LIBNAM)$(DSOEXT)
+LIBCOMPILERPREFIX=lib
+CFLAGS+=-Wall
+CFLAGS+=-O2
+CFLAGS+=-I./src
+CFLAGS+=-I../../../src/quickjspp
+CXXFLAGS+=-std=c++17
+CXXFLAGS+=-Wall
+CXXFLAGS+=-O2
+CXXFLAGS+=-I./src
+CXXFLAGS+=-I../../../src/crow
+CXXFLAGS+=-I../../../src/quickjspp
+CXXFLAGS+=-s
+CXXFLAGS+=-fvisibility=hidden
+ifneq (,$(findstring aarch64,$(TGT_MACHINE)))
+else
+	CXXFLAGS+=-fno-gnu-unique
+endif
+CXXFLAGS+=-fPIC
+LDFLAGS+=-L../lib
+LDFLAGS+=-shared
+LDFLAGS+=-rdynamic
+ifeq (run,$(firstword $(MAKECMDGOALS)))
+  RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  $(eval $(RUN_ARGS):;@:)
+endif
+all:deploy
+$(DSO):$(OBJS)
+	@$(ECHO) "generating $@..."
+	@$(MKDIR) -p $(LIBDIR)
+	$(CXX) \
+		$(OBJS) \
+		$(LDFLAGS) \
+		-o $(DSO) 
+deploy:compress
+	@$(ECHO) "deploying $(DSO):$(DEPLOYDIR)..."
+	@$(MKDIR) -p $(DEPLOYDIR)
+	@$(CP) $(DSO) $(DEPLOYDIR)
+$(OBJDIR)%.o: %.c
+	@$(ECHO) "generating $@..."
+	@-$(MKDIR) -p $(@D)
+	$(CC)\
+		$(CFLAGS)\
+		-c $<\
+		-o $@
+$(OBJDIR)%.o: %.cpp
+	@$(ECHO) "generating $@..."
+	@-$(MKDIR) -p $(@D)
+	$(CXX) \
+		$(CXXFLAGS) \
+		-c $< \
+		-o $@
+strip:$(DSO)
+	@$(ECHO) "stripping $(DSO)..."
+	@$(STRIP) $(DSO) --strip-unneeded
+compress:strip
+	@$(ECHO) "compressing $(DSO)..."
+	@$(UPX) $(DSO)
+dumpsyms:$(OBJS)
+	@$(ECHO) "Dumping $(OBJS)..."
+	@$(OBJDUMP) -t $(OBJS)
+run:$(DSO)
+	@$(ECHO) "running $(DSO)..."
+	@$(DSO) $(RUN_ARGS) 
+.phony:clean sta
+clean:
+	@$(ECHO) "cleaning ..."
+	@$(ECHO) "removing $(BUILDDIR)..."
+	@-rm -rf $(BUILDDIR)
+	@$(ECHO) "removing $(OBJDIR)..."
+	@-rm -rf $(OBJDIR) 2>/dev/null
+cleanall:
+	@$(ECHO) "removing $(BUILDROOT)..."
+	@rm -rf $(BUILDROOT)/*
+	@$(ECHO) "removing $(OBJROOT)..."
+	@rm -rf $(OBJROOT)/*
+sta:
+	@$(ECHO) "performing static analysis on $(SRC)..."
+	@$(CPPCHECK) --enable=all $(SRC)

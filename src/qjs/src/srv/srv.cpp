@@ -8,13 +8,35 @@
 #include<chrono>
 #include<atomic>
 #include<mutex>
+#include<malloc.h>
 #include<boost/filesystem.hpp>
+#include<dlfcn.h>
 #include"srv/config/config.hpp"
 #include"srv/dso/dso.hpp"
 #include"quickjspp.hpp"
 #include"quickjs/quickjs-libc.h"
+#include"mon/mon.hpp"
 crow::App<Srv::Middleware::MWDso>Srv::init(){
 	crow::App<Srv::Middleware::MWDso>app;
+	//--------------------------------------------------------------------------------
+	//mon
+	//--------------------------------------------------------------------------------
+	CROW_ROUTE(app,"/api/mon")([&app](){
+		crow::json::wvalue j;
+		double vm,rss;
+		Mon::mem_usage(vm,rss);
+		j["vm"]=vm;
+		j["rss"]=rss;
+		return j.dump();
+	});
+	CROW_ROUTE(app,"/api/mem/trim")([&app](){
+		malloc_trim(0);
+		crow::json::wvalue j;
+		j["message"]="malloc_trim(0) called";
+		return j.dump();
+	});
+
+
 	//--------------------------------------------------------------------------------
 	//Obtain logging level
 	//--------------------------------------------------------------------------------
@@ -89,25 +111,69 @@ crow::App<Srv::Middleware::MWDso>Srv::init(){
 			qjs::Context context(runtime);
 			JSContext*ctx=context.ctx;
 			JSRuntime*rt=runtime.rt;
-			js_std_init_handlers(rt);
-			JS_SetModuleLoaderFunc(rt,nullptr,js_module_loader,nullptr);
-			js_std_add_helpers(ctx,0,nullptr);
-			js_init_module_std(ctx,"std");
-			js_init_module_os(ctx,"os");
-			context.eval(R"(
-				import * as std from 'std';
-				import * as os from 'os';
-				globalThis.std=std;
-				globalThis.os=os;
-			)","<input>",JS_EVAL_TYPE_MODULE);
-			auto& module=context.addModule("HttpResponse");
-			module.function("add_header",[&res](std::string k,std::string v){res.add_header(k,v);});
-			module.function("write",[&res,&responded](std::string val){res.write(val);responded=true;});
-			module.function("end",[&res](){res.end();});
-			context.eval(R"(
-				import * as http from 'HttpResponse';
-				globalThis.http=http;
-			)","<input>",JS_EVAL_TYPE_MODULE);
+			{
+				js_std_init_handlers(rt);
+				JS_SetModuleLoaderFunc(rt,nullptr,js_module_loader,nullptr);
+				js_std_add_helpers(ctx,0,nullptr);
+				js_init_module_std(ctx,"std");
+				js_init_module_os(ctx,"os");
+				context.eval(R"(
+					import * as std from 'std';
+					import * as os from 'os';
+					globalThis.std=std;
+					globalThis.os=os;
+				)","<input>",JS_EVAL_TYPE_MODULE);
+			}
+			{
+				auto&module=context.addModule("HttpResponse");
+				module.function("add_header",[&res](std::string k,std::string v){res.add_header(k,v);});
+				module.function("write",[&res,&responded](std::string val){res.write(val);responded=true;});
+				module.function("end",[&res](){res.end();});
+				context.eval(R"(
+					import * as http from 'HttpResponse';
+					globalThis.http=http;
+				)","<input>",JS_EVAL_TYPE_MODULE);
+			}
+			{
+				auto&module=context.addModule("Dlfcn");
+				module.add("RTLD_LAZY",RTLD_LAZY);
+				module.add("RTLD_NOW",RTLD_NOW);
+				module.function("dlopen",[](std::string path,int mode){
+					std::ostringstream oss;
+					void*addr=dlopen(path.c_str(),mode);
+					oss<<addr;
+					return oss.str();
+				});
+				module.function("dlclose",[](std::string saddr){
+					std::istringstream iss(saddr);
+					void*addr;
+					iss>>addr;
+					return dlclose((void*)addr);
+				});
+				module.function("dlsym",[](const char*saddr,const char*snam){
+					std::istringstream iss(saddr);
+					void*addr;
+					iss>>addr;
+					std::ostringstream oss;
+					addr=dlsym(addr,snam);
+					oss<<addr;
+					return oss.str();
+				});
+				module.function("dlerror",[](int a){
+					return std::string(dlerror());
+				});
+				module.function("dlinvoke",[&context](const char*saddr){
+					std::istringstream iss(saddr);
+					void*addr;
+					iss>>addr;
+					int(*cb)(void*){(int(*)(void*))addr};
+					return cb((void*)&(context));
+				});
+				context.eval(R"(
+					import * as dlfcn from 'Dlfcn';
+					globalThis.dlfcn=dlfcn;
+				)","<input>",JS_EVAL_TYPE_MODULE);
+			}
 			try{
 				context.eval(src,"<eval>",JS_EVAL_TYPE_MODULE);
 			}catch(qjs::exception){
