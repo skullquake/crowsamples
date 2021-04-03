@@ -231,6 +231,7 @@ cleanall:
 	@-$(RM) -rf $(BUILDROOT)
 	@echo "removing $(OBJROOT)..."
 	@-$(RM) -rf $(OBJROOT)
+	@-$(RM) -rf ./public/dso/*
 sta:
 	@$(ECHO) "performing static analysis on $(SRC)..."
 	@$(CPPCHECK) --enable=all $(SRC)
