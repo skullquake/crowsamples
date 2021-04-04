@@ -17,7 +17,8 @@ static bool fileExists(std::string path){
 	if(stat(path.c_str(),&sb)==-1){
 		return false;
 	}
-	return true;
+	//return true;
+	return S_ISREG(sb.st_mode);
 }
 enum class Os{
         WIN32=0,
@@ -72,6 +73,9 @@ Os getOs(){
 void Srv::Middleware::MWDso::before_handle(crow::request&req,crow::response&res,context&ctx){
 	CROW_LOG_DEBUG<<"Srv::Middlware::MWDso::before_handle:start";
 	std::string path=boost::filesystem::path(std::string(CROW_STATIC_DIRECTORY)+req.url).lexically_normal().string();
+	CROW_LOG_DEBUG<<"0Srv::Middlware::MWDso::before_handle:path"<<path;
+	path=fileExists(path)?path:boost::filesystem::path(std::string(CROW_STATIC_DIRECTORY)+req.url+std::string("index.so")).lexically_normal().string();
+	CROW_LOG_DEBUG<<"1Srv::Middlware::MWDso::before_handle:path"<<path;
 	if(canLoadDSO(path)&&fileExists(path)){
 		CROW_LOG_DEBUG<<"Srv::Middlware::MWDso::before_handle:"<<path<<":opening...";
 		void*mod=dlopen(path.c_str(),RTLD_LAZY);
